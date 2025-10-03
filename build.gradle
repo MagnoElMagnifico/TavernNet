@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.5.6'
+    id 'org.springframework.boot' version '4.0.0-M3'
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -16,6 +16,8 @@ java {
 
 repositories {
     mavenCentral()
+    // Para poder usar el SNAPSHOT
+    maven { url = 'https://repo.spring.io/snapshot' }
 }
 
 // Simplificar estructura de carpetas
@@ -26,11 +28,14 @@ sourceSets {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+    // Aplicaciones REST usando Spring MVC. Usa Tomcat embebido como servidor
     implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // Integración con MongoBD
+    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+
+    // Live reloading tras compilar
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {

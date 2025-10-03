@@ -14,6 +14,22 @@ con atributos, clases y estadísticas. Los usuarios podrán:
 > No pretendemos implementar todas estas funcionalidades, solo aquellas partes
 > que se correspondan mejor con lo se vea en la materia.
 
+# Ejecutar
+
+Linux / Mac:
+
+```bash
+docker compose up
+./gradlew bootRun
+```
+
+Windows:
+
+```cmd
+docker compose up
+gradlew.bat bootRun
+```
+
 # Características
 
 - [ ] Perfiles de usuario con fichas de personaje
