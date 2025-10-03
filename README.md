@@ -57,6 +57,51 @@ Mensajes:
 
 <!-- TODO: Cómo integrar el Dungeon Master? -->
 
+# Diseño de la API
+
+Usuarios y personajes:
+
+| Verbo    | URL                                                 | Descripción                           |
+|----------|-----------------------------------------------------|---------------------------------------|
+| `GET`    | `/users/{userid}`                                   | Consultar perfil de usuario           |
+| `POST`   | `/users/{userid}`                                   | Crear nuevo usuario                   |
+| `DELETE` | `/users/{userid}`                                   | Borrar usuario                        |
+| `GET`    | `/users/{userid}/{characterid}`                     | Consultar stats de personaje          |
+| `POST`   | `/users/{userid}/{characterid}`                     | Crear personaje                       |
+| `PUT`/`PATCH`  | `/users/{userid}/{characterid}`               | Editar stats de personaje             |
+| `DELETE` | `/users/{userid}/{characterid}`                     | Borrar personaje                      |
+
+Creación de posts:
+
+| Verbo    | URL                                                 | Descripción                           |
+|----------|-----------------------------------------------------|---------------------------------------|
+| `GET`    | `/posts`                                            | Lista de posts                        |
+| `POST`   | `/posts/{userid}/{characterid}`                     | Crear un post                         |
+| `DELETE` | `/posts/{userid}/{characterid}`                     | Crear un post                         |
+| `GET`    | `/posts/{userid}/{characterid}/{postdate}`          | Consultar un post                     |
+| `DELETE` | `/posts/{userid}/{characterid}/{postdate}`          | Borrar un post                        |
+| `POST`   | `/posts/{userid}/{characterid}/{postdate}/like`     | Da un like a un posts                 |
+| `DELETE` | `/posts/{userid}/{characterid}/{postdate}/like`     | Quitar like a un post                 |
+| `POST`   | `/posts/{userid}/{characterid}/{postdate}/comments` | Crear un comentario en un post        |
+
+Mensajes:
+
+| Verbo    | URL                                                 | Descripción                           |
+|----------|-----------------------------------------------------|---------------------------------------|
+| `GET`    | `/messages`                                         | Obtener chats de ese usuario          |
+| `GET`    | `/messages/{userid}/{characterid}`                  | Obtener chat con este usuario         |
+| `POST`   | `/messages/{userid}/{characterid}`                  | Mensajes para el usuario              |
+| `GET`    | `/groups`                                           | grupos a los que pertenece el usuario |
+| `GET`    | `/groups/{groupid}`                                 | Mensajes para el usuario              |
+
+TODO:
+
+- Editar mensajes
+- Responder mensajes
+- Tirar dados
+- Borrar y editar comentarios
+- Gremios y _parties_
+
 # Estilo del código
 
 Normas generales:
