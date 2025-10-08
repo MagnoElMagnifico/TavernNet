@@ -6,23 +6,21 @@ import java.util.HashMap;
 public class Stats {
     private HashMap<String, Integer> main;
     private HashMap<String, Integer> modifiers;
-    private HashMap<String, Integer> passives;
+    private HashMap<String, Integer> passive;
     private HashMap<String, Integer> combat;
-    private HashMap<String, String> skills;
     private ArrayList<String> languages;
 
     public Stats() {
     }
 
     public Stats(HashMap<String, Integer> main, HashMap<String,
-                Integer> modifiers, HashMap<String, Integer> passives,
-                 HashMap<String, Integer> combat, HashMap<String, String> skills,
+                Integer> modifiers, HashMap<String, Integer> passive,
+                 HashMap<String, Integer> combat,
                  ArrayList<String> languages) {
         this.main = main;
         this.modifiers = modifiers;
-        this.passives = passives;
+        this.passive = passive;
         this.combat = combat;
-        this.skills = skills;
         this.languages = languages;
     }
 
@@ -42,12 +40,12 @@ public class Stats {
         this.modifiers = modifiers;
     }
 
-    public HashMap<String, Integer> getPassives() {
-        return passives;
+    public HashMap<String, Integer> getPassive() {
+        return passive;
     }
 
-    public void setPassives(HashMap<String, Integer> passives) {
-        this.passives = passives;
+    public void setPassive(HashMap<String, Integer> passive) {
+        this.passive = passive;
     }
 
     public HashMap<String, Integer> getCombat() {
@@ -56,14 +54,6 @@ public class Stats {
 
     public void setCombat(HashMap<String, Integer> combat) {
         this.combat = combat;
-    }
-
-    public HashMap<String, String> getSkills() {
-        return skills;
-    }
-
-    public void setSkills(HashMap<String, String> skills) {
-        this.skills = skills;
     }
 
     public ArrayList<String> getLanguages() {
