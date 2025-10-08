@@ -1,10 +1,13 @@
 package tarvernnet.model;
 
+import java.util.ArrayList;
+
 public class Character {
     private String name;
     private String biography;
     private String alignment;
     private Stats stats;
+    private ArrayList<Action> actions;
 
     public Character(String name) {
         this.name = name;
@@ -21,6 +24,14 @@ public class Character {
         this.biography = biography;
         this.alignment = alignment;
         this.stats = stats;
+    }
+
+    public Character(String name, String biography, String alignment, Stats stats, ArrayList<Action> actions) {
+        this.name = name;
+        this.biography = biography;
+        this.alignment = alignment;
+        this.stats = stats;
+        this.actions = actions;
     }
 
     public String getName() {
@@ -53,5 +64,13 @@ public class Character {
 
     public void setStats(Stats stats) {
         this.stats = stats;
+    }
+
+    public ArrayList<Action> getActions() {
+        return actions;
+    }
+
+    public void setActions(ArrayList<Action> actions) {
+        this.actions = actions;
     }
 }
