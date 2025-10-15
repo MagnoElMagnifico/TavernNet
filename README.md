@@ -61,46 +61,58 @@ Mensajes:
 
 Usuarios y personajes:
 
-| Verbo    | URL                                                 | Descripción                           |
-|----------|-----------------------------------------------------|---------------------------------------|
-| `GET`    | `/users/{userid}`                                   | Consultar perfil de usuario           |
-| `POST`   | `/users/{userid}`                                   | Crear nuevo usuario                   |
-| `DELETE` | `/users/{userid}`                                   | Borrar usuario                        |
-| `GET`    | `/users/{userid}/{characterid}`                     | Consultar stats de personaje          |
-| `POST`   | `/users/{userid}/{characterid}`                     | Crear personaje                       |
-| `PUT`/`PATCH`  | `/users/{userid}/{characterid}`               | Editar stats de personaje             |
-| `DELETE` | `/users/{userid}/{characterid}`                     | Borrar personaje                      |
+| Verbo     | URL                                                 | Descripción                           |
+|-----------|-----------------------------------------------------|---------------------------------------|
+| `POST`    | `/users`                                            | Crear nuevo usuario                   |
+| `GET`     | `/users/{userid}`                                   | Consultar perfil de usuario           |
+| `DELETE`  | `/users/{userid}`                                   | Borrar usuario                        |
+| `PATCH`   | `/users/{userid}`                                   | Cambiar contraseña del usuario        |
+| `POST`    | `/users/{userid}/characters`                        | Crear personaje                       |
+| `GET`     | `/users/{userid}/characters/{character-name}`       | Consultar stats de personaje          |
+| `PATCH`   | `/users/{userid}/characters/{character-name}`       | Editar stats de personaje             |
+| `DELETE`  | `/users/{userid}/characters/{character-name}`       | Borrar el personaje                   |
 
 Creación de posts:
 
 | Verbo    | URL                                                 | Descripción                           |
 |----------|-----------------------------------------------------|---------------------------------------|
-| `GET`    | `/posts`                                            | Lista de posts                        |
-| `POST`   | `/posts/{userid}/{characterid}`                     | Crear un post                         |
-| `DELETE` | `/posts/{userid}/{characterid}`                     | Crear un post                         |
-| `GET`    | `/posts/{userid}/{characterid}/{postdate}`          | Consultar un post                     |
-| `DELETE` | `/posts/{userid}/{characterid}/{postdate}`          | Borrar un post                        |
-| `POST`   | `/posts/{userid}/{characterid}/{postdate}/like`     | Da un like a un posts                 |
-| `DELETE` | `/posts/{userid}/{characterid}/{postdate}/like`     | Quitar like a un post                 |
-| `POST`   | `/posts/{userid}/{characterid}/{postdate}/comments` | Crear un comentario en un post        |
+| `GET`    | `/` o bien `/posts?for={characterid}`               | Lista de últimos posts (???)          |
+| `POST`   | `/posts`                                            | Crear un post                         |
+| `GET`    | `/posts/{postid}`                                   | Consultar un post                     |
+| `DELETE` | `/posts/{postid}`                                   | Borrar un post                        |
+| `PATCH`  | `/posts/{postid}`                                   | Dar o quitar un like a un post        |
+| `POST`   | `/posts/{postid}/comments`                          | Enviar comentario a un post           |
 
 Mensajes:
 
-| Verbo    | URL                                                 | Descripción                           |
-|----------|-----------------------------------------------------|---------------------------------------|
-| `GET`    | `/messages`                                         | Obtener chats de ese usuario          |
-| `GET`    | `/messages/{userid}/{characterid}`                  | Obtener chat con este usuario         |
-| `POST`   | `/messages/{userid}/{characterid}`                  | Mensajes para el usuario              |
-| `GET`    | `/groups`                                           | grupos a los que pertenece el usuario |
-| `GET`    | `/groups/{groupid}`                                 | Mensajes para el usuario              |
+| Verbo     | URL                                             | Descripción                              |
+|-----------|-------------------------------------------------|------------------------------------------|
+| `GET`     | `/messages?to={cid}`                            | Obtener chats del usuario `cid`          |
+| `GET`     | `/messages?to={cid1}&from={cid2}&since={date}`  | Obtener chat entre `cid1` (logeado) y `cid2` |
+| `POST`    | `/messages`                                     | Enviar mensajes como `cid1` a `cid2` (en el cuerpo) |
+| `POST`    | `/groups`                                       | Crear nuevo grupo                        |
+| `GET`     | `/groups?of={cid}`                              | Obtener grupos a los que pertenece `cid` |
+| `GET`     | `/groups/{groupid}`                             | Obtener mensajes del grupo               |
+| `POST`    | `/groups/{groupid}`                             | Enviar mensajes al grupo                 |
+|`PUT/PATCH`| `/groups/{groupid}`                             | Editar/administrar grupo                 |
+| `DELETE`  | `/groups/{groupid}`                             | Borrar grupo                             |
+
+NOTA: La notificación de nuevos mensajes requiere _pulling_.
 
 TODO:
 
-- Editar mensajes
-- Responder mensajes
+- Paginación de mensajes y comentarios
+- Editar, responder y borrar mensajes/comentarios
 - Tirar dados
 - Borrar y editar comentarios
 - Gremios y _parties_
+
+# Diseño de la base de datos
+
+<!-- https://www.w3schools.com/mongodb/mongodb_schema_validation.php -->
+<!-- https://json-schema.org/learn/miscellaneous-examples -->
+
+![](TavernNet.png)
 
 # Estilo del código
 
