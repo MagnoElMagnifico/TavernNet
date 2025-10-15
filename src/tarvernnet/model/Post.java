@@ -1,18 +1,30 @@
 package tarvernnet.model;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.bson.types.ObjectId;
+
 import java.util.ArrayList;
 import java.util.Date;
 
-public class Post {
-    private String title;
-    private Date date;
-    private ArrayList<Like> likes;
-    private ArrayList<Comment> comments;
+@Document(collection = "posts")
+public record Post (
+    @Id
+    ObjectId id,
 
-    public Post(String title, Date date, ArrayList<Like> likes, ArrayList<Comment> comments) {
-        this.title = title;
-        this.date = date;
-        this.likes = likes;
-        this.comments = comments;
-    }
-}
+    @NotBlank
+    String title,
+
+    @NotNull
+    Date date,
+
+    @NotEmpty
+    ArrayList<Like> likes,
+
+    @NotEmpty
+    ArrayList<Comment> comments
+) {}
+

@@ -1,5 +1,31 @@
-package tarvernnet;
+package tarvernnet.controller;
 
+import tarvernnet.model.Post;
+import tarvernnet.service.PostService;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("posts")
 public class PostController {
+    PostService posts;
 
+    @Autowired
+    public PostController(PostService posts) {
+        this.posts = posts;
+    }
+
+    @GetMapping
+    @Valid
+    public List<@NotNull Post> getPosts() {
+        return posts.something();
+    }
 }

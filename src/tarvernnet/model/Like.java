@@ -1,25 +1,17 @@
 package tarvernnet.model;
 
-import java.util.Date;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.bson.types.ObjectId;
 
-public class Like {
-    private int user;
-    private int post;
-
-    public Like(int user, int post) {
-        this.user = user;
-        this.post = post;
-    }
-
-    public int getUser() {
-        return user;
-    }
-
-    public int getPost() {
-        return post;
-    }
-
-    public void setPost(int post) {
-        this.post = post;
-    }
+@Document(collection = "likes")
+public record Like(
+    @Id @Valid LikeId id
+) {
+    public record LikeId(
+        @NotNull ObjectId post,
+        @NotNull ObjectId author
+    ) {}
 }
