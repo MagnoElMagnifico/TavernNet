@@ -6,9 +6,18 @@ import tarvernnet.model.*;
 import tarvernnet.repository.*;
 import tarvernnet.exception.*;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
+@Service
 public class UserService {
     private UserRepository userbase;
+
+    @Autowired
+    public UserService(UserRepository userbase) {
+        this.userbase = userbase;
+    }
+
 
     public User addUser(@NonNull User user) throws DuplicatedUserException {
         
@@ -24,11 +33,7 @@ public class UserService {
     }
 
     public User getUser(@NonNull String id) throws UserNotFoundException {
-        if (userbase.existsById(id)) {
-            return userbase.findByUserId(id);
-        } else {
-            throw new UserNotFoundException(id);
-        }
+        return userbase.findById(id).orElseThrow(() -> new UserNotFoundException(id));
     }
 
 }
