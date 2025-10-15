@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.bson.types.ObjectId;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -13,7 +12,7 @@ import java.util.Date;
 @Document(collection = "posts")
 public record Post (
     @Id
-    ObjectId id,
+    String id,
 
     @NotBlank
     String title,
@@ -21,10 +20,11 @@ public record Post (
     @NotNull
     Date date,
 
-    @NotEmpty
-    ArrayList<Like> likes,
+    int likes
+    // @NotNull
+    // ArrayList<Like> likes,
 
-    @NotEmpty
-    ArrayList<Comment> comments
+    // @NotNull
+    // ArrayList<Comment> comments
 ) {}
 

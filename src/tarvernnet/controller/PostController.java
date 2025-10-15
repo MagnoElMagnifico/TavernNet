@@ -12,6 +12,10 @@ import org.springframework.stereotype.Repository;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Date;
+
+import org.bson.types.ObjectId;
 
 @RestController
 @RequestMapping("posts")
@@ -25,7 +29,7 @@ public class PostController {
 
     @GetMapping
     @Valid
-    public List<@NotNull Post> getPosts() {
-        return posts.something();
+    public List<Post> getPosts() {
+        return posts.getPosts();
     }
 }

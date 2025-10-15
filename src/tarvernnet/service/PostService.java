@@ -1,7 +1,7 @@
 package tarvernnet.service;
 
 import tarvernnet.model.Post;
-import tarvernnet.repository.PostRepository;
+import tarvernnet.repository.PostsRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,14 +10,14 @@ import java.util.List;
 
 @Service
 public class PostService {
-    private final PostRepository posts;
+    private final PostsRepository posts;
 
     @Autowired
-    public PostService(PostRepository posts) {
+    public PostService(PostsRepository posts) {
         this.posts = posts;
     }
 
-    public List<Post> something() {
+    public List<Post> getPosts() {
         return posts.findAll();
     }
 }
