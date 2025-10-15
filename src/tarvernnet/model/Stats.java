@@ -10,8 +10,6 @@ public class Stats {
     private HashMap<String, Integer> combat;
     private ArrayList<String> languages;
 
-    public Stats() {
-    }
 
     public Stats(HashMap<String, Integer> main, HashMap<String,
                 Integer> modifiers, HashMap<String, Integer> passive,
