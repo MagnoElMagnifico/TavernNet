@@ -30,6 +30,13 @@ docker compose up
 gradlew.bat bootRun
 ```
 
+Luego, para subir algunos datos de prueba a la base de datos:
+
+```bash
+docker cp db_script.js tavernnet-database-1:/tmp
+docker exec tavernnet-database-1 mongosh /tmp/db_script.js
+```
+
 # Características
 
 - [ ] Perfiles de usuario con fichas de personaje
