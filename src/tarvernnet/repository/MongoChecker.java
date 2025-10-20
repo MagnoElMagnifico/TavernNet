@@ -23,14 +23,14 @@ public class MongoChecker implements CommandLineRunner {
     public void run(String... args) {
         try {
             String dbName = mongoTemplate.getDb().getName();
-            log.info("🔗 Connected to MongoDB database: {}", dbName);
+            log.info("Connected to MongoDB database: {}", dbName);
 
             var collections = mongoTemplate.getCollectionNames();
-            log.info("📦 Available collections: {}", collections);
+            log.info("Available collections: {}", collections);
 
             if (collections.contains("posts")) {
                 long count = mongoTemplate.getCollection("posts").countDocuments();
-                log.info("📝 Collection 'posts' contains {} documents", count);
+                log.info("Collection 'posts' contains {} documents", count);
 
                 Document firstDoc = mongoTemplate.getCollection("posts").find().first();
                 if (firstDoc != null) {
@@ -43,7 +43,7 @@ public class MongoChecker implements CommandLineRunner {
             }
 
         } catch (Exception e) {
-            log.error("❌ Error checking MongoDB connection: {}", e.getMessage(), e);
+            log.error("Error checking MongoDB connection: {}", e.getMessage(), e);
         }
     }
 }

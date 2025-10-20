@@ -129,7 +129,7 @@ Normas generales:
   sus tildes y `ñ`s.
 
 - Se usarán 4 espacios de indentación y codificación UTF-8 con terminaciones LF.
-  Esto se puede comprobar con los siguiente comandos:
+  Esto se puede comprobar con los siguientes comandos:
   ```bash
   fd -tf -H -E .git -x file
   rg '\t'

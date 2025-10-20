@@ -2,29 +2,55 @@ package tarvernnet.model;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.ArrayList;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @Document(collection = "posts")
-public record Post (
+public class Post {
     @Id
-    String id,
+    private final String id;
 
     @NotBlank
-    String title,
+    private String title;
 
     @NotNull
-    Date date,
+    private LocalDateTime date;
 
-    int likes
-    // @NotNull
-    // ArrayList<Like> likes,
+    @Size(min = 0)
+    private int likes;
 
-    // @NotNull
-    // ArrayList<Comment> comments
-) {}
+    public Post(String id, String title, LocalDateTime date, int likes) {
+        this.id = id;
+        this.title = title;
+        this.date = date;
+        this.likes = likes;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public LocalDateTime getDate() {
+        return date;
+    }
+
+    public void setDate(@NotNull LocalDateTime date) {
+        this.date = date;
+    }
+
+    public int getLikes() {
+        return likes;
+    }
+
+    public void setLikes(@Size(min = 0) int likes) {
+        this.likes = likes;
+    }
+}
 
