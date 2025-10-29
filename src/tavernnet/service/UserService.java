@@ -2,6 +2,9 @@ package tavernnet.service;
 
 import java.util.HashSet;
 import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tavernnet.model.*;
 import tavernnet.repository.*;
 import tavernnet.exception.*;
@@ -11,20 +14,25 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class UserService {
-    private UserRepository userbase;
-
+    private final UserRepository userbase;
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
     @Autowired
     public UserService(UserRepository userbase) {
         this.userbase = userbase;
     }
 
+    /**
+     * @param newUser Contenido del nuevo usuario a crear.
+     * @return Id del nuevo usuario creado.
+     */
+    public String createUser(User newUser) throws DuplicatedUserException {
 
-    public User addUser(@NonNull User user) throws DuplicatedUserException {
-
-        if (!userbase.existsById(user.id())) {
-            return userbase.save(user);
+        if (!userbase.existsById(newUser.id())) {
+            newUser = userbase.save(newUser);
+            log.info("Created user with id '{}'", newUser.id());
+            return newUser.id();
         } else {
-            throw new DuplicatedUserException(user);
+            throw new DuplicatedUserException(newUser);
         }
     }
 
