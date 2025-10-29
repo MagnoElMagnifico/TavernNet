@@ -1,5 +1,5 @@
-package tarvernnet.exception;
-import tarvernnet.model.User;
+package tavernnet.exception;
+import tavernnet.model.User;
 
 public class DuplicatedUserException extends Throwable{
     private final User user;

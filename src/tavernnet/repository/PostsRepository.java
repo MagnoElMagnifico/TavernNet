@@ -1,4 +1,4 @@
-package tarvernnet.repository;
+package tavernnet.repository;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.mongodb.repository.Query;
 
-import tarvernnet.model.Post;
+import tavernnet.model.Post;
 import java.util.List;
 
 @Repository

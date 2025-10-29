@@ -1,11 +1,11 @@
-package tarvernnet.exception;
+package tavernnet.exception;
 
 import jakarta.validation.constraints.NotBlank;
 
-public class PostNotFoundException extends Throwable {
+public class CharacterNotFoundException extends Throwable {
     private final String id;
 
-    public PostNotFoundException(@NotBlank String id) {
+    public CharacterNotFoundException(@NotBlank String id) {
         this.id = id;
     }
 

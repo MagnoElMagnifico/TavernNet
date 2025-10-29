@@ -1,11 +1,11 @@
-package tarvernnet.controller;
+package tavernnet.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
-import tarvernnet.exception.PostNotFoundException;
-import tarvernnet.model.Post;
-import tarvernnet.repository.PostsRepository;
-import tarvernnet.service.PostService;
+import tavernnet.exception.PostNotFoundException;
+import tavernnet.model.Post;
+import tavernnet.repository.PostsRepository;
+import tavernnet.service.PostService;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

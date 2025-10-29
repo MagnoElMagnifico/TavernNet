@@ -1,5 +1,5 @@
-package tarvernnet.controller;
-import tarvernnet.exception.*;
+package tavernnet.controller;
+import tavernnet.exception.*;
 
 import java.util.List;
 import java.util.Set;
@@ -17,9 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.jspecify.annotations.NonNull;
 
-import tarvernnet.exception.UserNotFoundException;
-import tarvernnet.model.User;
-import tarvernnet.service.UserService;
+import tavernnet.exception.UserNotFoundException;
+import tavernnet.model.User;
+import tavernnet.service.CharacterService;
+import tavernnet.service.UserService;
 
 @RestController
 @RequestMapping("users")
@@ -39,15 +40,15 @@ public class UserController {
 
 
     // Servicio para obtener un usuario por ID
-    @GetMapping("{user-id}")
-    public ResponseEntity<@NonNull User> getUser(@PathVariable("id") String id) {
+    @GetMapping("{userid}")
+    public ResponseEntity<@NonNull User> getUser(@PathVariable("userid") String id) {
         try {
             return ResponseEntity.ok(userService.getUser(id));
         } catch (UserNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
-    
+
     // Servicio para crear un nuevo usuario
     @PostMapping
     public ResponseEntity<@NonNull User> addUser(@RequestBody User user) {
@@ -55,12 +56,16 @@ public class UserController {
             user = userService.addUser(user);
 
             return ResponseEntity
-                    .created(MvcUriComponentsBuilder.fromMethodName(UserController.class, "getUser", user.id()).build().toUri())
+                    .created(MvcUriComponentsBuilder.fromMethodName(
+                        UserController.class, "getUser",
+                        user.id()).build().toUri())
                     .body(user);
         } catch (DuplicatedUserException e) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
-                    .location(MvcUriComponentsBuilder.fromMethodName(UserController.class, "getUser", user.id()).build().toUri())
+                    .location(MvcUriComponentsBuilder.fromMethodName(
+                        UserController.class, "getUser",
+                        user.id()).build().toUri())
                     .build();
         }
     }

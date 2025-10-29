@@ -1,4 +1,4 @@
-package tarvernnet.model;
+package tavernnet.model;
 
 import java.util.Date;
 

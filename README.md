@@ -1,4 +1,4 @@
-TarvernNet es una red social temática inspirada en _Dungeons & Dragons_ (DnD).
+TavernNet es una red social temática inspirada en _Dungeons & Dragons_ (DnD).
 En ella, los perfiles de los usuarios se representan como fichas de personaje,
 con atributos, clases y estadísticas. Los usuarios podrán:
 

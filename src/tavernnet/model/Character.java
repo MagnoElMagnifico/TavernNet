@@ -1,37 +1,38 @@
-package tarvernnet.model;
+package tavernnet.model;
+
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.ArrayList;
 
+@Document(collection = "characters")
+/*public record Character (
+    String id,
+    String name,
+    String biography,
+    String alignment,
+    Stats stats,
+    ArrayList<Action> actions
+){}*/
 public class Character {
+    private final String id;
     private String name;
     private String biography;
     private String alignment;
     private Stats stats;
     private ArrayList<Action> actions;
 
-    public Character(String name) {
-        this.name = name;
-    }
 
-    public Character(String name, String biography, String alignment) {
-        this.name = name;
-        this.biography = biography;
-        this.alignment = alignment;
-    }
-
-    public Character(String name, String biography, String alignment, Stats stats) {
-        this.name = name;
-        this.biography = biography;
-        this.alignment = alignment;
-        this.stats = stats;
-    }
-
-    public Character(String name, String biography, String alignment, Stats stats, ArrayList<Action> actions) {
+    public Character(String id, String name, String biography, String alignment, Stats stats, ArrayList<Action> actions) {
+        this.id = id;
         this.name = name;
         this.biography = biography;
         this.alignment = alignment;
         this.stats = stats;
         this.actions = actions;
+    }
+
+    public String getId() {
+        return id;
     }
 
     public String getName() {

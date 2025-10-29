@@ -1,4 +1,4 @@
-package tarvernnet.model;
+package tavernnet.model;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;

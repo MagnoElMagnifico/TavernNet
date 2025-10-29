@@ -1,15 +1,15 @@
-package tarvernnet;
+package tavernnet;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class TarvernnetApplication {
+public class TavernnetApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(TarvernnetApplication.class, args);
+        SpringApplication.run(TavernnetApplication.class, args);
     }
 
-    
+
 }
 

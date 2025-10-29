@@ -1,5 +1,5 @@
-package tarvernnet.repository;
-import tarvernnet.model.User;
+package tavernnet.repository;
+import tavernnet.model.User;
 
 import java.util.Optional;
 import java.util.Set;
@@ -14,5 +14,9 @@ public interface UserRepository extends MongoRepository<@NonNull User, @NonNull 
     @Query("{'username':  '?0'}")
     Set<User> findByUsername(@NonNull String username);
 
+    /**
+     * @param user Guarda el usuario en la base de datos.
+     * @return Devuelve el objeto que se almacenó en la base de datos.
+     */
     <S extends @NonNull User> S save(S user);
 }

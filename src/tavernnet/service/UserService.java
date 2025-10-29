@@ -1,10 +1,10 @@
-package tarvernnet.service;
+package tavernnet.service;
 
 import java.util.HashSet;
 import java.util.Set;
-import tarvernnet.model.*;
-import tarvernnet.repository.*;
-import tarvernnet.exception.*;
+import tavernnet.model.*;
+import tavernnet.repository.*;
+import tavernnet.exception.*;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,7 +20,7 @@ public class UserService {
 
 
     public User addUser(@NonNull User user) throws DuplicatedUserException {
-        
+
         if (!userbase.existsById(user.id())) {
             return userbase.save(user);
         } else {
