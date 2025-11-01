@@ -4,11 +4,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
 import org.springframework.data.mongodb.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 import tavernnet.model.Post;
-import java.util.List;
 
 @Repository
 public interface PostsRepository extends MongoRepository<@NotNull Post, @NotBlank String> {
@@ -23,10 +24,10 @@ public interface PostsRepository extends MongoRepository<@NotNull Post, @NotBlan
      * @return Post que tiene el ID dato o <code>null</code> si no existe.
      */
     @Query("{ '_id': '?0' }")
-    @Valid Post getPostById(String id);
+    @Valid Post getPostById(@NotBlank String id);
 
-    // TODO: como se implementa esto?
-    void deletePostById(String id);
+    @Query(value = "{ '_id': '?0' }", delete = true)
+    Post deletePostById(String id);
 
     /**
      * @param post Guarda el post en la base de datos.

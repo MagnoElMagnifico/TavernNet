@@ -1,56 +1,50 @@
 package tavernnet.model;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
+/** Representa una publicacion creada por un personaje determinado */
 @Document(collection = "posts")
-public class Post {
+public record Post (
+    // Datos internos
     @Id
-    private final String id;
+    String id,
 
-    @NotBlank
-    private String title;
+    @NotBlank(message = "Title must be not null or blank")
+    String title,
 
-    @NotNull
-    private LocalDateTime date;
+    @NotBlank(message = "Content must be not null or blank")
+    String content,
 
-    @Size(min = 0)
-    private int likes;
+    // TODO: id del character autor
 
-    public Post(String id, String title, LocalDateTime date, int likes) {
-        this.id = id;
-        this.title = title;
-        this.date = date;
-        this.likes = likes;
-    }
+    @NotNull(message = "Date must be not null")
+    LocalDateTime date,
 
-    public String getId() {
-        return id;
-    }
+    // TODO: esto se calcula desde el numero de likes
+    @Min(value = 0, message = "Likes must be a positive number")
+    int likes
+) {
+    /** Formato esperado del usuario al hacer POST para crear un post */
+    public record UserInputPost (
+        @NotBlank(message = "Title must be not null or blank")
+        String title,
 
-    public String getTitle() {
-        return title;
-    }
+        @NotBlank(message = "Content must be not null or blank")
+        String content
 
-    public LocalDateTime getDate() {
-        return date;
-    }
+        // TODO: id del character autor
+    ) {}
 
-    public void setDate(@NotNull LocalDateTime date) {
-        this.date = date;
-    }
-
-    public int getLikes() {
-        return likes;
-    }
-
-    public void setLikes(@Size(min = 0) int likes) {
-        this.likes = likes;
+    /** Publicacion de un post por el usuario */
+    public Post(Post.UserInputPost post) {
+        // Dejar el ID a null hará que la base de datos asigne uno automáticamente
+        this(null, post.title, post.content, LocalDateTime.now(), 0);
     }
 }
 

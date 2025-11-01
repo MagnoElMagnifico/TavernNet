@@ -1,4 +1,5 @@
 package tavernnet.exception;
+
 import tavernnet.model.User;
 
 public class DuplicatedUserException extends Throwable{

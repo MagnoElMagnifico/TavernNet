@@ -2,9 +2,9 @@ package tavernnet.model;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.bson.types.ObjectId;
 
 @Document(collection = "likes")
 public record Like(

@@ -83,12 +83,13 @@ Creación de posts:
 
 | Verbo    | URL                                                 | Descripción                           |
 |----------|-----------------------------------------------------|---------------------------------------|
-| `GET`    | `/` o bien `/posts?for={characterid}`               | Lista de últimos posts (???)          |
+| `GET`    | `/posts?for={characterid}`                          | Lista de últimos posts                |
 | `POST`   | `/posts`                                            | Crear un post                         |
 | `GET`    | `/posts/{postid}`                                   | Consultar un post                     |
 | `DELETE` | `/posts/{postid}`                                   | Borrar un post                        |
 | `PATCH`  | `/posts/{postid}`                                   | Dar o quitar un like a un post        |
 | `POST`   | `/posts/{postid}/comments`                          | Enviar comentario a un post           |
+| `GET`    | `/posts/{postid}/comments`                          | Obtener lista de comentarios          |
 
 Mensajes:
 
