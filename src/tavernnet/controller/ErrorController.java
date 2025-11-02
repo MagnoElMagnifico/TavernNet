@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
+import tavernnet.exception.CharacterNotFoundException;
 import tavernnet.exception.PostNotFoundException;
 
 import java.util.Map;
@@ -78,7 +79,7 @@ public class ErrorController {
 
     // TODO: hacer mas generico, no una excepcion por post/usuario/comentario/mensaje...
     @ExceptionHandler(PostNotFoundException.class)
-    public ErrorResponse handleNotFound(PostNotFoundException e) {
+    public ErrorResponse handlePostNotFound(PostNotFoundException e) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
         problem.setTitle("Post " + e.getId() + " not found");
         problem.setDetail("Post with id '" + e.getId() + "' cannot be found");
@@ -86,6 +87,21 @@ public class ErrorController {
             MvcUriComponentsBuilder
                 .fromController(ErrorController.class)
                 .pathSegment("error", "post-not-found")
+                .build()
+                .toUri()
+        );
+        return ErrorResponse.builder(e, problem).build();
+    }
+
+    @ExceptionHandler(CharacterNotFoundException.class)
+    public ErrorResponse handleCharacterNotFound(CharacterNotFoundException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setTitle("Character " + e.getId() + " not found");
+        problem.setDetail("Character with id '" + e.getId() + "' cannot be found");
+        problem.setType(
+            MvcUriComponentsBuilder
+                .fromController(ErrorController.class)
+                .pathSegment("error", "character-not-found")
                 .build()
                 .toUri()
         );

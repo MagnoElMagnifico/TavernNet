@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 
 /**
  * Representa un comentario sobre un post en concreto
- * @see Post
+ * @see PostView
  */
 @Document(collection = "comments")
 public record Comment(
@@ -35,19 +35,20 @@ public record Comment(
     /** Formato esperado del usuario al crear un comentario */
     public record UserInputComment(
         // NOTA: el post viene especificado en la URL
-
-        @NotBlank(message = "Comment author must be not blank")
-        String author,
-
+        // NOTA: el autor viene especificado en la cabecera de autenticacion
         @NotBlank(message = "Comment content must be not blank")
         String content
     ) {}
 
-    public Comment(@NotBlank String postId, @Valid UserInputComment comment) {
+    public Comment(
+        @NotBlank String postId,
+        @NotBlank String characterId,
+        @Valid UserInputComment comment
+    ) {
         this(
             new CommentId(
                 postId,
-                comment.author,
+                characterId,
                 LocalDateTime.now()
             ),
             comment.content

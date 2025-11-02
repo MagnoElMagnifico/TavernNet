@@ -24,7 +24,7 @@ public interface CharacterRepository extends MongoRepository<@NotNull Character,
 
     /**
      * @param characterid Id del personaje del que obtener los datos.
-     * @return Post que tiene el ID dato o <code>null</code> si no existe.
+     * @return PostView que tiene el ID dato o <code>null</code> si no existe.
      */
     @Query("{ '_id': '?0' }")
     @Valid
