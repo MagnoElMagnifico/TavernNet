@@ -67,7 +67,6 @@ db.posts.insertMany([
         character: zarion,
         title: "Post de prueba",
         content: "lorem ipsum dolor sit amet",
-        likes: 1
     },
     {
         _id: post2,
@@ -75,7 +74,6 @@ db.posts.insertMany([
         character: jolly,
         title: "pues otro post de prueba",
         content: "otro texto de ejemplo",
-        likes: 0
     }
 ])
 
@@ -111,21 +109,54 @@ db.likes.insertMany([
 // Tampoco permite nombres de usuario y personajes repetidos
 db.characters.createIndex({ user: 1, name: 1 }, { unique: true })
 
-// Al crear/actualizar un nuevo personaje, se configura como activo para el usuario
-// db.characters
-//     .watch([
-//         { $match: { operationType: { $in: ["insert", "update"] }}},
-//         { fullDocument: "updateLookup" }
-//     ])
-//     .on("change", (change) => {
-//         const newChar = change.fullDocument;
-//         if (!newChar) return;
-//         print(`Nuevo personaje creado: ${newChar.name} (${newChar._id})`);
+// TODO: esta vista no acaba de funcionar bien
+// Crear una vista para comprobar fácilmente el número de comentarios y likes
 //
-//         // Asigna el personaje activo al usuario
-//         db.users.updateOne(
-//             { _id: newChar.user },
-//             { $set: { active: newChar._id } }
-//         );
-//     });
+// NOTAS SOBRE RENDIMIENTO
+// Crea una vista que se traducirá en consultas (no es materializada), por lo
+// que no es lo mejor cuando hay muchas consultas y documentos. Pero como esto
+// no es el objetivo de la práctica, así está lo suficientemente bien.
+//
+// Por otro lado, estas vistas son solo de lectura: no se pueden escribir en
+// ellas, sino que se debe hacer en las colecciones subyacentes.
+db.createView(
+    "posts_view", // nombre de la vista a crear
+    "posts",      // colección de origen
+    [
+        // Hacer lookup de likes
+        {
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "_id.post",
+                as: "likes_docs"
+            }
+        },
 
+        // Hacer lookup de comentarios
+        {
+            $lookup: {
+                from: "comments",
+                localField: "_id",
+                foreignField: "_id.post",
+                as: "comments_docs"
+            }
+        },
+
+        // Calcular totales
+        {
+            $addFields: {
+                n_likes: { $size: "$likes_docs" },
+                n_comments: { $size: "$comments_docs" }
+            }
+        },
+
+        // Ocultar los arrays completos
+        {
+            $project: {
+                likes_docs: 0,
+                comments_docs: 0
+            }
+        }
+    ]
+);

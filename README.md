@@ -16,18 +16,15 @@ con atributos, clases y estadísticas. Los usuarios podrán:
 
 # Ejecutar
 
-Linux / Mac:
+Para ejecutar una versión de desarrollo (con _live-reloading_) usa los
+siguientes comandos:
 
 ```bash
-docker compose up
-./gradlew bootRun
-```
+docker compose up -d
+./gradlew --no-daemon bootRun # En Windows es gradlew.bat
 
-Windows:
-
-```cmd
-docker compose up
-gradlew.bat bootRun
+# Recompilar cambios
+./gradlew build
 ```
 
 Luego, para subir algunos datos de prueba a la base de datos:
@@ -83,11 +80,13 @@ Creación de posts:
 
 | Verbo    | URL                                                 | Descripción                           |
 |----------|-----------------------------------------------------|---------------------------------------|
-| `GET`    | `/` o bien `/posts?for={characterid}`               | Lista de últimos posts (???)          |
+| `GET`    | `/posts?for={characterid}`                          | Lista de últimos posts                |
 | `POST`   | `/posts`                                            | Crear un post                         |
 | `GET`    | `/posts/{postid}`                                   | Consultar un post                     |
 | `DELETE` | `/posts/{postid}`                                   | Borrar un post                        |
-| `PATCH`  | `/posts/{postid}`                                   | Dar o quitar un like a un post        |
+| `POST`   | `/posts/{postid}/like`                              | Dar un like a un post                 |
+| `DELETE` | `/posts/{postid}/like`                              | Quitar un like a un post              |
+| `GET`    | `/posts/{postid}/comments`                          | Obtener lista de comentarios          |
 | `POST`   | `/posts/{postid}/comments`                          | Enviar comentario a un post           |
 
 Mensajes:

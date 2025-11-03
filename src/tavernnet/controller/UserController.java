@@ -1,7 +1,6 @@
 package tavernnet.controller;
 
-import java.util.Set;
-
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,12 +12,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
-import org.jspecify.annotations.NonNull;
 
 import tavernnet.exception.DuplicatedUserException;
 import tavernnet.exception.UserNotFoundException;
 import tavernnet.model.User;
 import tavernnet.service.UserService;
+
+import java.util.Set;
 
 @RestController
 @RequestMapping("users")
