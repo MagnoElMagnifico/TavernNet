@@ -1,5 +1,6 @@
 package tavernnet.controller;
 
+import jakarta.validation.Valid;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -13,8 +14,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import tavernnet.exception.CharacterNotFoundException;
 import tavernnet.exception.DuplicatedUserException;
+import tavernnet.exception.PostNotFoundException;
 import tavernnet.exception.UserNotFoundException;
+import tavernnet.model.Post;
 import tavernnet.service.UserService;
 import tavernnet.service.CharacterService;
 import tavernnet.model.Character;
@@ -36,10 +40,45 @@ public class CharacterController {
         this.characterService = characterService;
     }
 
+    /**
+     * <code>POST /users/{userid}/characters/</code>
+     * @param newCharacter Nueva publicación.
+     * @return <code>201 Created</code> en éxito.
+     */
+    @PostMapping("{userid}/characters")
+    public ResponseEntity<Void> createCharacter(@PathVariable("userid") String id, @RequestBody Character newCharacter) {
+        String newId = characterService.createCharacter(newCharacter);
+
+        var url = MvcUriComponentsBuilder.fromMethodName(
+                CharacterController.class,
+                "getCharacter",
+                newId)
+            .build()
+            .toUri();
+
+        return ResponseEntity.created(url).build();
+    }
+
     // Servicio para obtener todos los personajes de un usuario
     @GetMapping("{userid}/characters")
     public ResponseEntity<@NonNull List<Character>> getCharacters(@PathVariable("userid") String id) {
         return ResponseEntity.ok(characterService.getCharactersByUser(id));
+    }
+
+    /**
+     * <code>GET /users/{userid}/characters/{characterid}</code>
+     * @param userId Identificador del usuario.
+     * @param characterId Identificador del character.
+     * @return <code>200 OK</code> con el post solicitado, <code>404 Not
+     * found</code> si no existe el ID proporcionado.
+     */
+    @GetMapping("{userid}/characters/{characterid}")
+    public ResponseEntity<@Valid Character> getCharacter(@PathVariable("userid") String userId, @PathVariable("characterid") String characterId) {
+        try {
+            return ResponseEntity.ok(characterService.getCharacter(characterId));
+        } catch (CharacterNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
     /*
 

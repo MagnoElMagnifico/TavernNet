@@ -14,6 +14,7 @@ import tavernnet.repository.CharacterRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -61,6 +62,8 @@ public class CharacterService {
      */
     public String createCharacter(tavernnet.model.@Valid Character newCharacter) {
 
+        // La fecha tiene que ser la de ahora
+        newCharacter.setDate(LocalDateTime.now());
 
         if (newCharacter.getId() != null) {
             // TODO: evitar esto de alguna forma
