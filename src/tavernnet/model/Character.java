@@ -1,5 +1,6 @@
 package tavernnet.model;
 
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -11,6 +12,7 @@ import java.util.ArrayList;
     @Id
     String id,
     String name,
+    String user,
     String biography,
     String alignment,
     LocalDateTime date,
@@ -18,28 +20,82 @@ import java.util.ArrayList;
     ArrayList<Action> actions
 ){}*/
 public class Character {
+    /** Formato esperado del usuario al hacer POST para crear un personaje */
+    public record UserInputCharacter (
+        @NotBlank(message = "Name must be not null or blank")
+        String name,
+        @NotBlank(message = "User must be not null or blank")
+        String user,
+        String biography,
+        String race,
+        ArrayList<String> languages,
+        String alignment,
+        Stats stats,
+        ArrayList<Action> actions
+    ) {}
+
+    // Datos internos
     @Id
     private final String id;
     private String name;
+    private String user;
     private String biography;
+    private String race;
+    private ArrayList<String> languages;
     private String alignment;
     private Stats stats;
     private ArrayList<Action> actions;
     private LocalDateTime date;
 
-
-    public Character(String id, String name, String biography, String alignment, Stats stats, ArrayList<Action> actions, LocalDateTime date) {
-        this.id = id;
+    public Character(String _id, String name, String user, String biography,
+                     String race, ArrayList<String> languages, String alignment,
+                     Stats stats, ArrayList<Action> actions, LocalDateTime date) {
+        this.id = _id;
         this.name = name;
+        this.user = user;
         this.biography = biography;
+        this.race = race;
+        this.languages = languages;
         this.alignment = alignment;
         this.stats = stats;
         this.actions = actions;
         this.date = date;
     }
 
+    /** Creacion de un personaje por el usuario */
+    public Character(Character.UserInputCharacter character, String author) {
+        // Dejar el ID a null hará que la base de datos asigne uno automáticamente
+        this(null, character.name, author, character.biography, character.race,
+            character.languages, character.alignment, character.stats,
+            character.actions, LocalDateTime.now());
+    }
+
     public String getId() {
         return id;
+    }
+
+    public String getUser() {
+        return user;
+    }
+
+    public void setUser(String user) {
+        this.user = user;
+    }
+
+    public String getRace() {
+        return race;
+    }
+
+    public void setRace(String race) {
+        this.race = race;
+    }
+
+    public ArrayList<String> getLanguages() {
+        return languages;
+    }
+
+    public void setLanguages(ArrayList<String> languages) {
+        this.languages = languages;
     }
 
     public String getName() {

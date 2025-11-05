@@ -2,6 +2,8 @@ package tavernnet.controller;
 
 import jakarta.validation.Valid;
 import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,10 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
-import tavernnet.exception.CharacterNotFoundException;
-import tavernnet.exception.DuplicatedUserException;
-import tavernnet.exception.PostNotFoundException;
-import tavernnet.exception.UserNotFoundException;
+import tavernnet.exception.*;
 import tavernnet.model.Post;
 import tavernnet.service.UserService;
 import tavernnet.service.CharacterService;
@@ -34,6 +33,7 @@ import java.util.List;
 public class CharacterController {
     UserService userService;
     CharacterService characterService;
+    private static final Logger log = LoggerFactory.getLogger(CharacterController.class);
 
     @Autowired
     public CharacterController(UserService userService, CharacterService characterService) {
@@ -47,17 +47,25 @@ public class CharacterController {
      * @return <code>201 Created</code> en éxito.
      */
     @PostMapping("{userid}/characters")
-    public ResponseEntity<Void> createCharacter(@PathVariable("userid") String id, @RequestBody Character newCharacter) {
-        String newId = characterService.createCharacter(newCharacter);
+    public ResponseEntity<Void> createCharacter(@PathVariable("userid") String userId, @RequestBody Character newCharacter) {
 
-        var url = MvcUriComponentsBuilder.fromMethodName(
-                CharacterController.class,
-                "getCharacter",
-                newId)
-            .build()
-            .toUri();
+        try{
+            String newId = characterService.createCharacter(newCharacter);
 
-        return ResponseEntity.created(url).build();
+            var url = MvcUriComponentsBuilder.fromMethodName(
+                    CharacterController.class,
+                    "getCharacter",
+                    userId,
+                    newId)
+                .build()
+                .toUri();
+
+            return ResponseEntity.created(url).build();
+        }catch(DuplicatedCharacterException e){
+            log.info("Personaje duplicado :P");
+            return ResponseEntity.notFound().build();
+        }
+
     }
 
     // Servicio para obtener todos los personajes de un usuario
@@ -74,45 +82,25 @@ public class CharacterController {
      * found</code> si no existe el ID proporcionado.
      */
     @GetMapping("{userid}/characters/{characterid}")
-    public ResponseEntity<@Valid Character> getCharacter(@PathVariable("userid") String userId, @PathVariable("characterid") String characterId) {
+    public ResponseEntity<@Valid Character> getCharacter(
+        @PathVariable("userid") String userId,
+        @PathVariable("characterid") String characterId) {
         try {
             return ResponseEntity.ok(characterService.getCharacter(characterId));
         } catch (CharacterNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
-    /*
 
-    // Servicio para obtener un usuario por ID
-    @GetMapping("{user-id}")
-    public ResponseEntity<@NonNull User> getUser(@PathVariable("id") String id) {
-        try {
-            return ResponseEntity.ok(userService.getUser(id));
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+    /**
+     * @param characterId Identificador del personaje a borrar
+     * @throws CharacterNotFoundException Si el ID no existe
+     */
+    @DeleteMapping("{userid}/characters/{characterid}")
+    public ResponseEntity<Void> deleteCharacter(@PathVariable("userid") String userId, @PathVariable("characterid") String characterId) throws CharacterNotFoundException {
+        characterService.deleteCharacter(characterId);
+        return ResponseEntity.noContent().build();
     }
-
-    // Servicio para crear un nuevo usuario
-    @PostMapping
-    public ResponseEntity<@NonNull User> addUser(@RequestBody User user) {
-        try{
-            user = userService.addUser(user);
-
-            return ResponseEntity
-                .created(MvcUriComponentsBuilder.fromMethodName(
-                    UserController.class, "getUser",
-                    user.id()).build().toUri())
-                .body(user);
-        } catch (DuplicatedUserException e) {
-            return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .location(MvcUriComponentsBuilder.fromMethodName(
-                    UserController.class, "getUser",
-                    user.id()).build().toUri())
-                .build();
-        }
-    }*/
 
 }
 

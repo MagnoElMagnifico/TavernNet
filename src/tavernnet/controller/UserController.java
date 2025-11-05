@@ -1,19 +1,16 @@
 package tavernnet.controller;
 
+import jakarta.validation.constraints.NotBlank;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 import tavernnet.exception.DuplicatedUserException;
+import tavernnet.exception.PostNotFoundException;
 import tavernnet.exception.UserNotFoundException;
 import tavernnet.model.User;
 import tavernnet.service.UserService;
@@ -46,6 +43,23 @@ public class UserController {
         } catch (UserNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    /**
+     * <code>DELETE /users/{userid}</code>
+     * @param userId Identificador del usuario.
+     * @return <code>204 No content</code> en éxito, <code>404 Not found</code>
+     * si no existe el ID proporcionado.
+     */
+    // TODO: errores de permisos
+    @DeleteMapping("{userid}")
+    public ResponseEntity<Void> deletePost(
+        @PathVariable("userid")
+        @NotBlank(message = "Missing userId to retrieve")
+        String userId
+    ) throws UserNotFoundException {
+        userService.deleteUser(userId);
+        return ResponseEntity.noContent().build();
     }
 
     // Servicio para crear un nuevo usuario

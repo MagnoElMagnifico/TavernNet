@@ -37,6 +37,18 @@ public class UserService {
         }
     }
 
+    /**
+     * @param userId Identificador del post a borrar
+     * @throws UserNotFoundException Si el ID no existe
+     */
+    public void deleteUser(String userId) throws UserNotFoundException {
+        User deletedUser = userbase.deleteUserById(userId);
+        if (deletedUser == null) {
+            throw new UserNotFoundException(userId);
+        }
+
+    }
+
     public Set<User> getUsers() {
         return new HashSet<>(userbase.findAll());
     }

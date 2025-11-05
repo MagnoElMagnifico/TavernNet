@@ -13,26 +13,21 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 import tavernnet.exception.CharacterNotFoundException;
+import tavernnet.exception.DuplicatedCharacterException;
 import tavernnet.model.Character;
 import tavernnet.repository.CharacterRepository;
 
-import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 public class CharacterService {
 
     private static final Logger log = LoggerFactory.getLogger(CharacterService.class);
     private final CharacterRepository characterbase;
-    private final Validator validator;
 
     @Autowired
-    public CharacterService(CharacterRepository characterbase, Validator validator) {
+    public CharacterService(CharacterRepository characterbase) {
         this.characterbase = characterbase;
-        this.validator = validator;
     }
 
     /**
@@ -65,29 +60,28 @@ public class CharacterService {
      * @param newCharacter Contenido del nuevo personaje a crear.
      * @return Id del nuevo character creado.
      */
-    public String createCharacter(tavernnet.model.@Valid Character newCharacter) {
+    public String createCharacter(tavernnet.model.@Valid Character newCharacter) throws DuplicatedCharacterException {
 
-        // La fecha tiene que ser la de ahora
+        // La fecha de creacion tiene que ser la de ahora
         newCharacter.setDate(LocalDateTime.now());
 
-        if (newCharacter.getId() != null) {
+        // El personaje debe ser nuevo
+        if (characterbase.existsById(newCharacter.getId())) {
             // TODO: evitar esto de alguna forma
-            throw new RuntimeException("Crear character con id establecido");
+            throw new DuplicatedCharacterException(newCharacter);
         }
 
-        // Validar ahora el resto de campos: titulo y contenido
-        var violations = validator.validate(newCharacter);
-        if (!violations.isEmpty()) {
-            throw new ConstraintViolationException(violations);
-        }
 
         newCharacter = characterbase.save(newCharacter);
         log.info("Created character with id '{}'", newCharacter.getClass());
         return newCharacter.getId();
     }
 
-    public void deleteCharacter(@NotBlank String characterId) {
-        throw new RuntimeException("Not implemented");
+    public void deleteCharacter(@NotBlank String characterId) throws CharacterNotFoundException {
+        Character deletedCharacter = characterbase.deleteCharacterById(characterId);
+        if (deletedCharacter == null) {
+            throw new CharacterNotFoundException(characterId);
+        }
     }
 }
 

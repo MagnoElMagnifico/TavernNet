@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 import tavernnet.model.Character;
+import tavernnet.model.Post;
 
 @Repository
 public interface CharacterRepository extends MongoRepository<@NotNull Character, @NotBlank String> {
@@ -30,11 +31,14 @@ public interface CharacterRepository extends MongoRepository<@NotNull Character,
     @Valid
     Character getCharacterById(String characterid);
 
-    void deleteCharacterById(String characterid);
+    // No usar deleteById ya que ignora si no existe
+    @Query(value = "{ '_id': ?0 }", delete = true)
+    Character deleteCharacterById(String characterid);
 
     /**
      * @param character Guarda el personaje en la base de datos.
      * @return Devuelve el objeto que se almacenó en la base de datos.
      */
     <S extends @NotNull Character> S save(@Valid S character);
+
 }

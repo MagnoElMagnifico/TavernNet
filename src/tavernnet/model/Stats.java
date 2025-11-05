@@ -8,18 +8,15 @@ public class Stats {
     private HashMap<String, Integer> modifiers;
     private HashMap<String, Integer> passive;
     private HashMap<String, Integer> combat;
-    private ArrayList<String> languages;
 
 
     public Stats(HashMap<String, Integer> main, HashMap<String,
                 Integer> modifiers, HashMap<String, Integer> passive,
-                 HashMap<String, Integer> combat,
-                 ArrayList<String> languages) {
+                 HashMap<String, Integer> combat) {
         this.main = main;
         this.modifiers = modifiers;
         this.passive = passive;
         this.combat = combat;
-        this.languages = languages;
     }
 
     public HashMap<String, Integer> getMain() {
@@ -54,11 +51,4 @@ public class Stats {
         this.combat = combat;
     }
 
-    public ArrayList<String> getLanguages() {
-        return languages;
-    }
-
-    public void setLanguages(ArrayList<String> languages) {
-        this.languages = languages;
-    }
 }
