@@ -7,8 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-import tavernnet.exception.CharacterNotFoundException;
-import tavernnet.exception.PostNotFoundException;
+import tavernnet.exception.NotFoundException;
 import tavernnet.model.Comment;
 import tavernnet.model.PostView;
 import tavernnet.model.Post;
@@ -52,10 +51,10 @@ public class PostService {
     /**
      * @param id Identificador del post.
      * @return El post que tiene el id especificado.
-     * @throws PostNotFoundException Si el post no se encuentra.
+     * @throws NotFoundException Si el post no se encuentra.
      */
-    public PostView getPost(String id) throws PostNotFoundException {
-        return postsViewRepo.findById(id).orElseThrow(() -> new PostNotFoundException(id));
+    public PostView getPost(String id) throws NotFoundException {
+        return postsViewRepo.findById(id).orElseThrow(() -> new NotFoundException("Post", id));
     }
 
     /**
@@ -65,9 +64,9 @@ public class PostService {
     public String createPost(
         Post.UserInputPost newPost,
         String characterId
-    ) throws CharacterNotFoundException {
+    ) throws NotFoundException {
         if (!charRepo.existsById(characterId)) {
-            throw new CharacterNotFoundException(characterId);
+            throw new NotFoundException("Character", characterId);
         }
 
         Post realPost = new Post(newPost, characterId);
@@ -79,12 +78,12 @@ public class PostService {
 
     /**
      * @param postId Identificador del post a borrar
-     * @throws PostNotFoundException Si el ID no existe
+     * @throws NotFoundException Si el ID no existe
      */
-    public void deletePost(String postId) throws PostNotFoundException {
+    public void deletePost(String postId) throws NotFoundException {
         Post deletedPost = postsRepo.deletePostById(postId);
         if (deletedPost == null) {
-            throw new PostNotFoundException(postId);
+            throw new NotFoundException("Post", postId);
         }
 
         // Borrar en cascada los elementos asociados al post
@@ -95,20 +94,20 @@ public class PostService {
     /**
      * @param postId Identificador del post a obtener sus comentarios
      * @return Lista de comentarios del post especificado
-     * @throws PostNotFoundException Si el ID no existe
+     * @throws NotFoundException Si el ID no existe
      */
     public List<Comment> getCommentsByPost(
         String postId
-    ) throws PostNotFoundException {
+    ) throws NotFoundException {
         // Buscar si existe un post con este ID
         if (!postsRepo.existsById(postId)) {
-            throw new PostNotFoundException(postId);
+            throw new NotFoundException("Post", postId);
         }
 
         // Obtener la lista de comentarios
         List<Comment> comments = commentRepo.getCommentsByPost(postId);
         if (comments == null) {
-            throw new PostNotFoundException(postId);
+            throw new NotFoundException("Post", postId);
         }
 
         return comments;
@@ -118,20 +117,20 @@ public class PostService {
      * @param postId Identificador del post donde crear el comentario
      * @param newComment Datos del comentario a crear
      * @return Identificador del nuevo comentario
-     * @throws PostNotFoundException Si el ID no existe
+     * @throws NotFoundException Si el ID no existe
      */
-    public Comment.CommentId createComment(
+    public String createComment(
         String postId,
         String characterId,
         Comment.UserInputComment newComment
-    ) throws PostNotFoundException, CharacterNotFoundException {
+    ) throws NotFoundException {
         // Comprobar si el post existe o no
         if (!postsRepo.existsById(postId)) {
-            throw new PostNotFoundException(postId);
+            throw new NotFoundException("Post", postId);
         }
 
         if (!charRepo.existsById(characterId)) {
-            throw new CharacterNotFoundException(characterId);
+            throw new NotFoundException("Character", characterId);
         }
 
         Comment comment = new Comment(postId, characterId, newComment);
@@ -142,13 +141,13 @@ public class PostService {
     }
 
     public void giveLike(String postId, String characterId)
-            throws PostNotFoundException, CharacterNotFoundException {
+            throws NotFoundException {
         if (!postsRepo.existsById(postId)) {
-            throw new PostNotFoundException(postId);
+            throw new NotFoundException("Post", postId);
         }
 
         if (!charRepo.existsById(characterId)) {
-            throw new CharacterNotFoundException(characterId);
+            throw new NotFoundException("Character", characterId);
         }
 
         likesRepo.addLike(postId, characterId);
@@ -156,13 +155,13 @@ public class PostService {
     }
 
     public void removeLike(String postId, String characterId)
-            throws PostNotFoundException, CharacterNotFoundException {
+            throws NotFoundException {
         if (!postsRepo.existsById(postId)) {
-            throw new PostNotFoundException(postId);
+            throw new NotFoundException("Post", postId);
         }
 
         if (!charRepo.existsById(characterId)) {
-            throw new CharacterNotFoundException(characterId);
+            throw new NotFoundException("Character", characterId);
         }
 
         likesRepo.removeLike(postId, characterId);

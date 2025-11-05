@@ -7,8 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
-import tavernnet.exception.CharacterNotFoundException;
-import tavernnet.exception.PostNotFoundException;
+import tavernnet.exception.NotFoundException;
 import tavernnet.model.Comment;
 import tavernnet.model.Post;
 import tavernnet.model.PostView;
@@ -49,7 +48,7 @@ public class PostController {
         @RequestParam(value = "author", required = true)
         @NotBlank(message = "Missing character id author of the post")
         String characterId
-    ) throws CharacterNotFoundException {
+    ) throws NotFoundException {
         String newId = posts.createPost(newPost, characterId);
 
         var url = MvcUriComponentsBuilder.fromMethodName(
@@ -73,7 +72,7 @@ public class PostController {
         @PathVariable("postid")
         @NotBlank(message = "Missing postId to retrieve")
         String postId
-    ) throws PostNotFoundException {
+    ) throws NotFoundException {
         return posts.getPost(postId);
     }
 
@@ -89,7 +88,7 @@ public class PostController {
         @PathVariable("postid")
         @NotBlank(message = "Missing postId to retrieve")
         String postId
-    ) throws PostNotFoundException {
+    ) throws NotFoundException {
         posts.deletePost(postId);
         return ResponseEntity.noContent().build();
     }
@@ -101,7 +100,7 @@ public class PostController {
         @RequestParam(value = "author", required = true)
         @NotBlank(message = "Missing character id author of the like")
         String characterId
-    ) throws PostNotFoundException, CharacterNotFoundException {
+    ) throws NotFoundException, NotFoundException {
         posts.giveLike(postId, characterId);
 
         var url = MvcUriComponentsBuilder.fromMethodName(
@@ -122,7 +121,7 @@ public class PostController {
         @RequestParam(value = "author", required = true)
         @NotBlank(message = "Missing character id author of the like")
         String characterId
-    ) throws PostNotFoundException, CharacterNotFoundException {
+    ) throws NotFoundException {
         posts.removeLike(postId, characterId);
         return ResponseEntity.noContent().build();
     }
@@ -139,7 +138,7 @@ public class PostController {
         @PathVariable("postid")
         @NotBlank(message = "Missing postId to retrieve comments from")
         String postId
-    ) throws PostNotFoundException {
+    ) throws NotFoundException {
         return posts.getCommentsByPost(postId);
     }
 
@@ -158,14 +157,15 @@ public class PostController {
         @RequestParam(value = "author", required = true)
         @NotBlank(message = "Missing character id author of the comment")
         String characterId
-    ) throws PostNotFoundException, CharacterNotFoundException {
-        Comment.CommentId newId = posts.createComment(postId, characterId, newComment);
+    ) throws NotFoundException, NotFoundException {
+        // TODO: GET de un comentario especifico?
+        String commentId = posts.createComment(postId, characterId, newComment);
 
         // El enlace es a la lista de comentarios
         var url = MvcUriComponentsBuilder.fromMethodName(
                 PostController.class,
                 "getCommentsByPost",
-                newId.post())
+                postId)
             .build()
             .toUri();
 

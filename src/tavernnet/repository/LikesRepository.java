@@ -20,34 +20,32 @@ public class LikesRepository {
     }
 
     public void addLike(String postId, String authorId) {
-        Document like = new Document(
-            "_id",
-            new Document("post", postId)
-                .append("author", authorId)
-        );
+        Document like = new Document();
+        like.append("post", postId);
+        like.append("author", authorId);
         mongo.insert(like, "likes");
     }
 
     public void removeLike(String postId, String authorId) {
         Query query = new Query(Criteria
-            .where("_id.post")
+            .where("post")
             .is(postId)
-            .and("_id.author")
+            .and("author")
             .is(authorId)
         );
         mongo.remove(query, "likes");
     }
 
     public void deleteByPostId(String postId) {
-        Query query = new Query(Criteria.where("_id.post").is(postId));
+        Query query = new Query(Criteria.where("post").is(postId));
         mongo.remove(query, "likes");
     }
 
     public boolean existsLike(String postId, String authorId) {
         Query query = new Query(Criteria
-            .where("_id.post")
+            .where("post")
             .is(postId)
-            .and("_id.author")
+            .and("author")
             .is(authorId)
         );
         return mongo.exists(query, "likes");

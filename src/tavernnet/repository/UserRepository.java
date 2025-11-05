@@ -14,13 +14,13 @@ import java.util.Set;
 import tavernnet.model.User;
 
 @Repository
-public interface UserRepository extends MongoRepository<@NotNull User, @NotBlank String>{
+public interface UserRepository extends MongoRepository<User, String>{
     @Query("{'username':  '?0'}")
-    Set<User> findByUsername(@NotNull String username);
+    Set<User> findByUsername(String username);
 
     /**
      * @param user Guarda el usuario en la base de datos.
      * @return Devuelve el objeto que se almacenó en la base de datos.
      */
-    <S extends @NotNull User> S save(@Valid S user);
+    <S extends User> S save(S user);
 }

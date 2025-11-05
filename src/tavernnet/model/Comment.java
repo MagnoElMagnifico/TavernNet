@@ -14,24 +14,20 @@ import java.time.LocalDateTime;
  */
 @Document(collection = "comments")
 public record Comment(
-    @Valid
-    @Id CommentId id,
+    @Id String id,
 
     @NotBlank(message = "Comment content must be not blank")
-    String content
+    String content,
+
+    @NotBlank(message = "CommentId post must be not blank")
+    String post,
+
+    @NotBlank(message = "CommentId author must be not blank")
+    String author,
+
+    @NotNull(message = "CommentID date must be not null")
+    LocalDateTime date
 ) {
-    /** Identificador de un comentario: post donde se publica, autor y fecha */
-    public record CommentId(
-        @NotBlank(message = "CommentId post must be not blank")
-        String post,
-
-        @NotBlank(message = "CommentId author must be not blank")
-        String author,
-
-        @NotNull(message = "CommentID date must be not null")
-        LocalDateTime date
-    ) {}
-
     /** Formato esperado del usuario al crear un comentario */
     public record UserInputComment(
         // NOTA: el post viene especificado en la URL
@@ -45,13 +41,6 @@ public record Comment(
         @NotBlank String characterId,
         @Valid UserInputComment comment
     ) {
-        this(
-            new CommentId(
-                postId,
-                characterId,
-                LocalDateTime.now()
-            ),
-            comment.content
-        );
+        this(null, comment.content, postId, characterId, LocalDateTime.now());
     }
 }

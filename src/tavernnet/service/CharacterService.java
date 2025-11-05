@@ -12,15 +12,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-import tavernnet.exception.CharacterNotFoundException;
+import tavernnet.exception.NotFoundException;
 import tavernnet.model.Character;
 import tavernnet.repository.CharacterRepository;
 
-import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 public class CharacterService {
@@ -51,12 +47,12 @@ public class CharacterService {
     /**
      * @param id Identificador del character.
      * @return El character que tiene el id especificado.
-     * @throws CharacterNotFoundException Si el character no se encuentra.
+     * @throws NotFoundException Si el character no se encuentra.
      */
-    public tavernnet.model.@Valid Character getCharacter(@NotBlank String id) throws CharacterNotFoundException {
+    public tavernnet.model.@Valid Character getCharacter(@NotBlank String id) throws NotFoundException {
         tavernnet.model.@Valid Character character = characterbase.getCharacterById(id);
         if (character == null) {
-            throw new CharacterNotFoundException(id);
+            throw new NotFoundException("Character", id);
         }
         return character;
     }
