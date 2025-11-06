@@ -1,10 +1,14 @@
 package tavernnet.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import tavernnet.utils.ObjectIdSerializer;
+import tavernnet.utils.ValidObjectId;
 
 import java.time.LocalDateTime;
 
@@ -14,24 +18,26 @@ import java.time.LocalDateTime;
  */
 @Document(collection = "comments")
 public record Comment(
-    @Valid
-    @Id CommentId id,
+    @Id
+    @JsonSerialize(using = ObjectIdSerializer.class)
+    @ValidObjectId(message = "Invalid comment id")
+    ObjectId id,
 
     @NotBlank(message = "Comment content must be not blank")
-    String content
+    String content,
+
+    @JsonSerialize(using = ObjectIdSerializer.class)
+    @ValidObjectId(message = "Invalid post id")
+    ObjectId post,
+
+    @JsonSerialize(using = ObjectIdSerializer.class)
+    @ValidObjectId(message = "Invalid author id")
+    ObjectId author,
+
+    @NotNull(message = "Comment date must be not null")
+    @JsonSerialize(using = ObjectIdSerializer.class)
+    LocalDateTime date
 ) {
-    /** Identificador de un comentario: post donde se publica, autor y fecha */
-    public record CommentId(
-        @NotBlank(message = "CommentId post must be not blank")
-        String post,
-
-        @NotBlank(message = "CommentId author must be not blank")
-        String author,
-
-        @NotNull(message = "CommentID date must be not null")
-        LocalDateTime date
-    ) {}
-
     /** Formato esperado del usuario al crear un comentario */
     public record UserInputComment(
         // NOTA: el post viene especificado en la URL
@@ -41,17 +47,10 @@ public record Comment(
     ) {}
 
     public Comment(
-        @NotBlank String postId,
-        @NotBlank String characterId,
+        @ValidObjectId ObjectId postId,
+        @ValidObjectId ObjectId characterId,
         @Valid UserInputComment comment
     ) {
-        this(
-            new CommentId(
-                postId,
-                characterId,
-                LocalDateTime.now()
-            ),
-            comment.content
-        );
+        this(null, comment.content, postId, characterId, LocalDateTime.now());
     }
 }

@@ -39,6 +39,11 @@ dependencies {
 
     // Live reloading tras compilar
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // Para personalizar serializacion de ObjectId
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
 }
 
 tasks.named('test') {

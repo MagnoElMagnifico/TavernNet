@@ -1,8 +1,7 @@
 package tavernnet.repository;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -12,20 +11,20 @@ import java.util.List;
 import tavernnet.model.Comment;
 
 @Repository
-public interface CommentsRepository extends MongoRepository<@NotNull Comment, @NotBlank String> {
+public interface CommentsRepository extends MongoRepository<Comment, ObjectId> {
     /**
      * Obtiene todos los comentarios de un post concreto.
      * @param postId ID del post al que pertenecen los comentarios.
      */
     @Query("{ '_id.post': ?0 }")
-    List<Comment> getCommentsByPost(@NotBlank String postId);
+    List<Comment> getCommentsByPost(ObjectId postId);
 
     @Query(value = "{ 'id_post': ?0 }", delete = true)
-    List<Comment> deleteByPostId(@NotBlank String postId);
+    void deleteByPostId(ObjectId postId);
 
     /**
      * @param comment Guarda el nuevo comentario en la base de datos.
      * @return Devuelve el objeto que se almacenó en la base de datos.
      */
-    <S extends @NotNull Comment> S save(@Valid S comment);
+    <S extends @NotNull Comment> S save(S comment);
 }

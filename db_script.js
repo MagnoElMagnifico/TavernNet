@@ -79,37 +79,32 @@ db.posts.insertMany([
 
 db.comments.insertMany([
     {
-        _id: {
-            post: post1,
-            author: zarion,
-            date: new Date("2025-10-02T06:01:18.234Z"),
-        },
+        post: post1,
+        author: zarion,
+        date: new Date("2025-10-02T06:01:18.234Z"),
         content: "primer comentario?"
     },
     {
-        _id: {
-            post: post1,
-            author: zarion,
-            date: new Date(),
-        },
+        post: post1,
+        author: zarion,
+        date: new Date(),
         content: "buen post"
     }
 ])
 
 db.likes.insertMany([
     {
-        _id: {
-            post: post1,
-            author: jolly,
-        }
+        post: post1,
+        author: jolly,
     }
 ])
 
 // Acceso eficiente a personajes por nombre de usuario y nombre de personaje
 // Tampoco permite nombres de usuario y personajes repetidos
 db.characters.createIndex({ user: 1, name: 1 }, { unique: true })
+// Solo 1 like por post
+db.likes.createIndex({ post: 1, author: 1 }, { unique: true })
 
-// TODO: esta vista no acaba de funcionar bien
 // Crear una vista para comprobar fácilmente el número de comentarios y likes
 //
 // NOTAS SOBRE RENDIMIENTO
@@ -128,7 +123,7 @@ db.createView(
             $lookup: {
                 from: "likes",
                 localField: "_id",
-                foreignField: "_id.post",
+                foreignField: "post",
                 as: "likes_docs"
             }
         },
@@ -138,7 +133,7 @@ db.createView(
             $lookup: {
                 from: "comments",
                 localField: "_id",
-                foreignField: "_id.post",
+                foreignField: "post",
                 as: "comments_docs"
             }
         },

@@ -1,5 +1,6 @@
 package tavernnet.repository;
 
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.bson.Document;
@@ -19,35 +20,33 @@ public class LikesRepository {
         this.mongo = mongo;
     }
 
-    public void addLike(String postId, String authorId) {
-        Document like = new Document(
-            "_id",
-            new Document("post", postId)
-                .append("author", authorId)
-        );
+    public void addLike(ObjectId postId, ObjectId authorId) {
+        Document like = new Document();
+        like.append("post", postId);
+        like.append("author", authorId);
         mongo.insert(like, "likes");
     }
 
-    public void removeLike(String postId, String authorId) {
+    public void removeLike(ObjectId postId, ObjectId authorId) {
         Query query = new Query(Criteria
-            .where("_id.post")
+            .where("post")
             .is(postId)
-            .and("_id.author")
+            .and("author")
             .is(authorId)
         );
         mongo.remove(query, "likes");
     }
 
-    public void deleteByPostId(String postId) {
-        Query query = new Query(Criteria.where("_id.post").is(postId));
+    public void deleteByPostId(ObjectId postId) {
+        Query query = new Query(Criteria.where("post").is(postId));
         mongo.remove(query, "likes");
     }
 
-    public boolean existsLike(String postId, String authorId) {
+    public boolean existsLike(ObjectId postId, ObjectId authorId) {
         Query query = new Query(Criteria
-            .where("_id.post")
+            .where("post")
             .is(postId)
-            .and("_id.author")
+            .and("author")
             .is(authorId)
         );
         return mongo.exists(query, "likes");

@@ -26,14 +26,14 @@ public class UserService {
      * @param newUser Contenido del nuevo usuario a crear.
      * @return Id del nuevo usuario creado.
      */
-    public String createUser(User newUser) throws DuplicatedUserException {
+    public String createUser(User newUser) throws DuplicatedResourceException {
 
         if (!userbase.existsById(newUser.id())) {
             newUser = userbase.save(newUser);
             log.info("Created user with id '{}'", newUser.id());
             return newUser.id();
         } else {
-            throw new DuplicatedUserException(newUser);
+            throw new DuplicatedResourceException(newUser);
         }
     }
 
@@ -53,8 +53,8 @@ public class UserService {
         return new HashSet<>(userbase.findAll());
     }
 
-    public User getUser(@NonNull String id) throws UserNotFoundException {
-        return userbase.findById(id).orElseThrow(() -> new UserNotFoundException(id));
+    public User getUser(@NonNull String id) throws ResourceNotFoundException {
+        return userbase.findById(id).orElseThrow(() -> new ResourceNotFoundException("User", id));
     }
 
 }

@@ -4,10 +4,10 @@ import jakarta.validation.Valid;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.validation.constraints.NotBlank;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,22 +18,20 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 
 import tavernnet.exception.*;
 import tavernnet.model.Post;
+import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.service.UserService;
 import tavernnet.service.CharacterService;
 import tavernnet.model.Character;
-import tavernnet.model.User;
-import tavernnet.service.CharacterService;
-import tavernnet.service.UserService;
+import tavernnet.utils.ValidObjectId;
 
-import java.util.Set;
 import java.util.List;
 
 @RestController
 @RequestMapping("users")
 public class CharacterController {
-    UserService userService;
-    CharacterService characterService;
     private static final Logger log = LoggerFactory.getLogger(CharacterController.class);
+    private final UserService userService;
+    private final CharacterService characterService;
 
     @Autowired
     public CharacterController(UserService userService, CharacterService characterService) {
@@ -47,7 +45,13 @@ public class CharacterController {
      * @return <code>201 Created</code> en éxito.
      */
     @PostMapping("{userid}/characters")
-    public ResponseEntity<Void> createCharacter(@PathVariable("userid") String userId, @RequestBody Character newCharacter) {
+    public ResponseEntity<Void> createCharacter(
+        @PathVariable("userid") @NotBlank String id, // TODO: unused
+        @RequestBody Character newCharacter
+    ) {
+        // TODO: user not found
+        // TODO: duplicated character
+        String newId = characterService.createCharacter(newCharacter);
 
         try{
             String newId = characterService.createCharacter(newCharacter);
@@ -70,28 +74,12 @@ public class CharacterController {
 
     // Servicio para obtener todos los personajes de un usuario
     @GetMapping("{userid}/characters")
-    public ResponseEntity<@NonNull List<Character>> getCharacters(@PathVariable("userid") String id) {
-        return ResponseEntity.ok(characterService.getCharactersByUser(id));
+    public List<@Valid Character> getCharacters(@PathVariable("userid") String id) {
+        // TODO: user not found
+        return characterService.getCharactersByUser(id);
     }
 
-    /**
-     * <code>GET /users/{userid}/characters/{characterid}</code>
-     * @param userId Identificador del usuario.
-     * @param characterId Identificador del character.
-     * @return <code>200 OK</code> con el post solicitado, <code>404 Not
-     * found</code> si no existe el ID proporcionado.
-     */
-    @GetMapping("{userid}/characters/{characterid}")
-    public ResponseEntity<@Valid Character> getCharacter(
-        @PathVariable("userid") String userId,
-        @PathVariable("characterid") String characterId) {
-        try {
-            return ResponseEntity.ok(characterService.getCharacter(characterId));
-        } catch (CharacterNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
+    
     /**
      * @param characterId Identificador del personaje a borrar
      * @throws CharacterNotFoundException Si el ID no existe
@@ -102,5 +90,53 @@ public class CharacterController {
         return ResponseEntity.noContent().build();
     }
 
+    
+    /**
+     * <code>GET /users/{userid}/characters/{characterid}</code>
+     * @param userId Identificador del usuario.
+     * @param characterId Identificador del character.
+     * @return <code>200 OK</code> con el post solicitado, <code>404 Not
+     * found</code> si no existe el ID proporcionado.
+     */
+    @GetMapping("{userid}/characters/{characterid}")
+    public @Valid Character getCharacter(
+        @PathVariable("userid") @NotBlank String userId, // TODO: unused
+        @PathVariable("characterid") @ValidObjectId ObjectId characterId
+    ) throws ResourceNotFoundException {
+        return characterService.getCharacter(characterId);
+    }
+
+    /*
+    // Servicio para obtener un usuario por ID
+    @GetMapping("{user-id}")
+    public ResponseEntity<@NonNull User> getUser(@PathVariable("id") String id) {
+        try {
+            return ResponseEntity.ok(userService.getUser(id));
+        } catch (UserNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // Servicio para crear un nuevo usuario
+    @PostMapping
+    public ResponseEntity<@NonNull User> addUser(@RequestBody User user) {
+        try{
+            user = userService.addUser(user);
+
+            return ResponseEntity
+                .created(MvcUriComponentsBuilder.fromMethodName(
+                    UserController.class, "getUser",
+                    user.id()).build().toUri())
+                .body(user);
+        } catch (DuplicatedResourceException e) {
+            return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .location(MvcUriComponentsBuilder.fromMethodName(
+                    UserController.class, "getUser",
+                    user.id()).build().toUri())
+                .build();
+        }
+    }
+    */
 }
 

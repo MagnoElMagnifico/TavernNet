@@ -2,17 +2,18 @@ package tavernnet.controller;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
-import tavernnet.exception.CharacterNotFoundException;
-import tavernnet.exception.PostNotFoundException;
+import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Comment;
 import tavernnet.model.Post;
 import tavernnet.model.PostView;
 import tavernnet.service.PostService;
+import tavernnet.utils.ValidObjectId;
 
 import java.util.List;
 
@@ -44,13 +45,14 @@ public class PostController {
      */
     @PostMapping
     public ResponseEntity<Void> createPost(
-        @RequestBody @Valid Post.UserInputPost newPost,
+        @RequestBody @Valid
+        Post.UserInputPost newPost,
         // TODO: borrar cuando se implemente autenticacion
         @RequestParam(value = "author", required = true)
-        @NotBlank(message = "Missing character id author of the post")
-        String characterId
-    ) throws CharacterNotFoundException {
-        String newId = posts.createPost(newPost, characterId);
+        @ValidObjectId(message = "Invalid character id author of the post")
+        ObjectId characterId
+    ) throws ResourceNotFoundException {
+        ObjectId newId = posts.createPost(newPost, characterId);
 
         var url = MvcUriComponentsBuilder.fromMethodName(
                 PostController.class,
@@ -71,9 +73,9 @@ public class PostController {
     @GetMapping("{postid}")
     public @Valid PostView getPost(
         @PathVariable("postid")
-        @NotBlank(message = "Missing postId to retrieve")
-        String postId
-    ) throws PostNotFoundException {
+        @ValidObjectId(message = "Invalid postId to retrieve")
+        ObjectId postId
+    ) throws ResourceNotFoundException {
         return posts.getPost(postId);
     }
 
@@ -87,21 +89,24 @@ public class PostController {
     @DeleteMapping("{postid}")
     public ResponseEntity<Void> deletePost(
         @PathVariable("postid")
-        @NotBlank(message = "Missing postId to retrieve")
-        String postId
-    ) throws PostNotFoundException {
+        @ValidObjectId(message = "Invalid postId to retrieve")
+        ObjectId postId
+    ) throws ResourceNotFoundException {
         posts.deletePost(postId);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("{postid}/like")
     public ResponseEntity<Void> giveLike(
-        @PathVariable("postid") String postId,
+        @PathVariable("postid")
+        @ValidObjectId(message = "Invalid post id")
+        ObjectId postId,
+
         // TODO: borrar cuando se implemente autenticacion
         @RequestParam(value = "author", required = true)
-        @NotBlank(message = "Missing character id author of the like")
-        String characterId
-    ) throws PostNotFoundException, CharacterNotFoundException {
+        @ValidObjectId(message = "Invalid character id author of the like")
+        ObjectId characterId
+    ) throws ResourceNotFoundException {
         posts.giveLike(postId, characterId);
 
         var url = MvcUriComponentsBuilder.fromMethodName(
@@ -117,12 +122,15 @@ public class PostController {
     // TODO: error de si el usuario no habia dado like antes
     @DeleteMapping("{postid}/like")
     public ResponseEntity<Void> removeLike(
-        @PathVariable("postid") String postId,
+        @PathVariable("postid")
+        @ValidObjectId(message = "Invalid post id")
+        ObjectId postId,
+
         // TODO: borrar cuando se implemente autenticacion
         @RequestParam(value = "author", required = true)
-        @NotBlank(message = "Missing character id author of the like")
-        String characterId
-    ) throws PostNotFoundException, CharacterNotFoundException {
+        @ValidObjectId(message = "Invalid character id author of the like")
+        ObjectId characterId
+    ) throws ResourceNotFoundException {
         posts.removeLike(postId, characterId);
         return ResponseEntity.noContent().build();
     }
@@ -137,9 +145,9 @@ public class PostController {
     @GetMapping("{postid}/comments")
     public List<Comment> getCommentsByPost(
         @PathVariable("postid")
-        @NotBlank(message = "Missing postId to retrieve comments from")
-        String postId
-    ) throws PostNotFoundException {
+        @ValidObjectId(message = "Invalid postId to retrieve comments from")
+        ObjectId postId
+    ) throws ResourceNotFoundException {
         return posts.getCommentsByPost(postId);
     }
 
@@ -152,20 +160,26 @@ public class PostController {
      */
     @PostMapping("{postid}/comments")
     public ResponseEntity<Void> createComment(
-        @PathVariable("postid") String postId,
-        @RequestBody @Valid Comment.UserInputComment newComment,
+        @PathVariable("postid")
+        @ValidObjectId(message = "Invalid post id")
+        ObjectId postId,
+
+        @RequestBody @Valid
+        Comment.UserInputComment newComment,
+
         // TODO: borrar cuando se implemente autenticacion
         @RequestParam(value = "author", required = true)
-        @NotBlank(message = "Missing character id author of the comment")
-        String characterId
-    ) throws PostNotFoundException, CharacterNotFoundException {
-        Comment.CommentId newId = posts.createComment(postId, characterId, newComment);
+        @ValidObjectId(message = "Invalid character id author of the comment")
+        ObjectId characterId
+    ) throws ResourceNotFoundException {
+        // TODO: GET de un comentario especifico?
+        ObjectId commentId = posts.createComment(postId, characterId, newComment);
 
         // El enlace es a la lista de comentarios
         var url = MvcUriComponentsBuilder.fromMethodName(
                 PostController.class,
                 "getCommentsByPost",
-                newId.post())
+                postId)
             .build()
             .toUri();
 
