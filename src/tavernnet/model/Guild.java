@@ -1,7 +1,5 @@
 package tavernnet.model;
 
-import org.springframework.resilience.annotation.EnableResilientMethods;
-
 import java.util.ArrayList;
 
 public class Guild {

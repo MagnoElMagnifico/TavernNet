@@ -1,7 +1,8 @@
 package tavernnet.controller;
 
 import jakarta.validation.Valid;
-import org.jspecify.annotations.NonNull;
+import jakarta.validation.constraints.NotBlank;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,18 +13,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
-import tavernnet.exception.NotFoundException;
+import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.service.UserService;
 import tavernnet.service.CharacterService;
 import tavernnet.model.Character;
+import tavernnet.utils.ValidObjectId;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("users")
 public class CharacterController {
-    UserService userService;
-    CharacterService characterService;
+    private final UserService userService;
+    private final CharacterService characterService;
 
     @Autowired
     public CharacterController(UserService userService, CharacterService characterService) {
@@ -37,7 +39,12 @@ public class CharacterController {
      * @return <code>201 Created</code> en éxito.
      */
     @PostMapping("{userid}/characters")
-    public ResponseEntity<Void> createCharacter(@PathVariable("userid") String id, @RequestBody Character newCharacter) {
+    public ResponseEntity<Void> createCharacter(
+        @PathVariable("userid") @NotBlank String id, // TODO: unused
+        @RequestBody Character newCharacter
+    ) {
+        // TODO: user not found
+        // TODO: duplicated character
         String newId = characterService.createCharacter(newCharacter);
 
         var url = MvcUriComponentsBuilder.fromMethodName(
@@ -52,8 +59,9 @@ public class CharacterController {
 
     // Servicio para obtener todos los personajes de un usuario
     @GetMapping("{userid}/characters")
-    public ResponseEntity<@NonNull List<Character>> getCharacters(@PathVariable("userid") String id) {
-        return ResponseEntity.ok(characterService.getCharactersByUser(id));
+    public List<@Valid Character> getCharacters(@PathVariable("userid") String id) {
+        // TODO: user not found
+        return characterService.getCharactersByUser(id);
     }
 
     /**
@@ -64,11 +72,14 @@ public class CharacterController {
      * found</code> si no existe el ID proporcionado.
      */
     @GetMapping("{userid}/characters/{characterid}")
-    public @Valid Character getCharacter(@PathVariable("userid") String userId, @PathVariable("characterid") String characterId) throws NotFoundException {
+    public @Valid Character getCharacter(
+        @PathVariable("userid") @NotBlank String userId, // TODO: unused
+        @PathVariable("characterid") @ValidObjectId ObjectId characterId
+    ) throws ResourceNotFoundException {
         return characterService.getCharacter(characterId);
     }
-    /*
 
+    /*
     // Servicio para obtener un usuario por ID
     @GetMapping("{user-id}")
     public ResponseEntity<@NonNull User> getUser(@PathVariable("id") String id) {
@@ -98,7 +109,7 @@ public class CharacterController {
                     user.id()).build().toUri())
                 .build();
         }
-    }*/
-
+    }
+    */
 }
 

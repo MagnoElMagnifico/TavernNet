@@ -10,6 +10,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -19,7 +20,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import tavernnet.exception.NotFoundException;
+import tavernnet.exception.ResourceNotFoundException;
 
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -172,11 +173,25 @@ public class ErrorController {
         return ErrorResponse.builder(ex, problem).build();
     }
 
+        // Errores de URL, parametros y querys que faltan
+        @ExceptionHandler({
+            HttpRequestMethodNotSupportedException.class,
+        })
+        public ErrorResponse handleInvalidPathOrParams(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+            log.warn("Invalid path or parameters at {}: {}", request.getRequestURI(), ex.getMessage(), ex);
+            var problem = ProblemDetail.forStatus(HttpStatus.METHOD_NOT_ALLOWED);
+            problem.setTitle("Invalid method");
+            problem.setDetail("The requested endpoint does not support the %s method".formatted(ex.getMethod()));
+            problem.setType(getType("method-not-allowed"));
+            problem.setProperty("path", request.getRequestURI());
+            return ErrorResponse.builder(ex, problem).build();
+        }
+
     // ==== ERRORES CUSTOM =====================================================
 
     // Recursos no encontrados
-    @ExceptionHandler(NotFoundException.class)
-    public ErrorResponse handlePostNotFound(NotFoundException ex) {
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ErrorResponse handlePostNotFound(ResourceNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
         problem.setTitle("%s was not found".formatted(ex.getType()));
         problem.setDetail(ex.getMessage());

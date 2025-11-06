@@ -1,11 +1,15 @@
 package tavernnet.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
+import tavernnet.utils.ObjectIdSerializer;
+import tavernnet.utils.ValidObjectId;
 
 import java.time.LocalDateTime;
 
@@ -18,7 +22,9 @@ import java.time.LocalDateTime;
 public record PostView (
     // Datos internos
     @Id
-    String id,
+    @JsonSerialize(using = ObjectIdSerializer.class)
+    @ValidObjectId(message = "Invalid post id")
+    ObjectId id,
 
     @NotBlank(message = "Title must be not null or blank")
     String title,
@@ -26,7 +32,9 @@ public record PostView (
     @NotBlank(message = "Content must be not null or blank")
     String content,
 
-    // TODO: id del character autor
+    @JsonSerialize(using = ObjectIdSerializer.class)
+    @ValidObjectId(message = "Invalid author character id")
+    ObjectId author,
 
     @NotNull(message = "Date must be not null")
     LocalDateTime date,

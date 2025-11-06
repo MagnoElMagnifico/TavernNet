@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 import tavernnet.exception.DuplicatedResourceException;
-import tavernnet.exception.NotFoundException;
+import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.User;
 import tavernnet.service.UserService;
 
@@ -40,7 +40,7 @@ public class UserController {
 
     // Servicio para obtener un usuario por ID
     @GetMapping("{userid}")
-    public @Valid User getUser(@PathVariable("userid") String id) throws NotFoundException  {
+    public @Valid User getUser(@PathVariable("userid") String id) throws ResourceNotFoundException {
         return userService.getUser(id);
     }
 

@@ -41,8 +41,8 @@ public class UserService {
         return new HashSet<>(userbase.findAll());
     }
 
-    public User getUser(@NonNull String id) throws NotFoundException {
-        return userbase.findById(id).orElseThrow(() -> new NotFoundException("User", id));
+    public User getUser(@NonNull String id) throws ResourceNotFoundException {
+        return userbase.findById(id).orElseThrow(() -> new ResourceNotFoundException("User", id));
     }
 
 }

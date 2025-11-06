@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-import tavernnet.exception.NotFoundException;
+import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Character;
 import tavernnet.repository.CharacterRepository;
 
@@ -47,12 +48,12 @@ public class CharacterService {
     /**
      * @param id Identificador del character.
      * @return El character que tiene el id especificado.
-     * @throws NotFoundException Si el character no se encuentra.
+     * @throws ResourceNotFoundException Si el character no se encuentra.
      */
-    public tavernnet.model.@Valid Character getCharacter(@NotBlank String id) throws NotFoundException {
-        tavernnet.model.@Valid Character character = characterbase.getCharacterById(id);
+    public @Valid Character getCharacter(@NotBlank ObjectId id) throws ResourceNotFoundException {
+        @Valid Character character = characterbase.getCharacterById(id);
         if (character == null) {
-            throw new NotFoundException("Character", id);
+            throw new ResourceNotFoundException("Character", id.toString());
         }
         return character;
     }
