@@ -43,11 +43,8 @@ public class CharacterController {
     public ResponseEntity<Void> createCharacter(
         @PathVariable("userid") @NotBlank String userId, // TODO: unused
         @RequestBody Character.UserInputCharacter newCharacter
-    ) {
-        // TODO: user not found
-        // TODO: duplicated character
+    ) throws DuplicatedResourceException {
 
-        try{
             String newId = characterService.createCharacter(newCharacter, userId);
 
             var url = MvcUriComponentsBuilder.fromMethodName(
@@ -59,11 +56,6 @@ public class CharacterController {
                 .toUri();
 
             return ResponseEntity.created(url).build();
-        }catch(DuplicatedResourceException e){
-            log.info("Personaje duplicado :P");
-            return ResponseEntity.notFound().build();
-        }
-
     }
 
     // Servicio para obtener todos los personajes de un usuario

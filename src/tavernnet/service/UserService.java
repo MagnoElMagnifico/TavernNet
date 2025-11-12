@@ -35,7 +35,7 @@ public class UserService {
             log.info("Created user with id '{}'", newUser.id());
             return newUser.id();
         } else {
-            throw new DuplicatedResourceException(newUser);
+            throw new DuplicatedResourceException(newUser, "User", newUser.id());
         }
     }
 

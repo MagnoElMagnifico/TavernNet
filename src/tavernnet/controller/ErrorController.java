@@ -20,6 +20,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
 
 import java.net.URI;
@@ -196,6 +197,16 @@ public class ErrorController {
         problem.setTitle("%s was not found".formatted(ex.getType()));
         problem.setDetail(ex.getMessage());
         problem.setType(getType("not-found"));
+        return ErrorResponse.builder(ex, problem).build();
+    }
+
+    // Recurso duplicado
+    @ExceptionHandler(DuplicatedResourceException.class)
+    public ErrorResponse handleDuplicatedResource(DuplicatedResourceException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setTitle("%s already exists".formatted(ex.getType()));
+        problem.setDetail(ex.getMessage());
+        problem.setType(getType("duplicated-resource"));
         return ErrorResponse.builder(ex, problem).build();
     }
 }

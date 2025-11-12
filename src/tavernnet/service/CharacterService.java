@@ -70,7 +70,7 @@ public class CharacterService {
 
         // El personaje debe ser nuevo
         if (characterbase.existsByName(userId, newCharacter.name())) {
-            throw new DuplicatedResourceException(newCharacter);
+            throw new DuplicatedResourceException(newCharacter, "Character", newCharacter.name());
         }
         Character realCharacter = new Character(newCharacter, userId);
         // La fecha de creacion tiene que ser la de ahora
