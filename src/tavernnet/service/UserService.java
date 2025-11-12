@@ -1,11 +1,13 @@
 package tavernnet.service;
 
+import org.bson.types.ObjectId;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -39,22 +41,23 @@ public class UserService {
 
     /**
      * @param userId Identificador del post a borrar
-     * @throws UserNotFoundException Si el ID no existe
+     * @throws ResourceNotFoundException Si el ID no existe
      */
-    public void deleteUser(String userId) throws UserNotFoundException {
+    public void deleteUser(String userId) throws ResourceNotFoundException {
         User deletedUser = userbase.deleteUserById(userId);
         if (deletedUser == null) {
-            throw new UserNotFoundException(userId);
+            throw new ResourceNotFoundException("User", userId);
         }
 
     }
 
-    public Set<User> getUsers() {
-        return new HashSet<>(userbase.findAll());
+    public Collection<User> getUsers() {
+        return userbase.findAll();
     }
 
-    public User getUser(@NonNull String id) throws ResourceNotFoundException {
-        return userbase.findById(id).orElseThrow(() -> new ResourceNotFoundException("User", id));
+    public User getUser(@NonNull String userId) throws ResourceNotFoundException {
+        return userbase.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User", userId));
     }
 
 }

@@ -8,12 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 import tavernnet.exception.*;
@@ -46,15 +41,14 @@ public class CharacterController {
      */
     @PostMapping("{userid}/characters")
     public ResponseEntity<Void> createCharacter(
-        @PathVariable("userid") @NotBlank String id, // TODO: unused
-        @RequestBody Character newCharacter
+        @PathVariable("userid") @NotBlank String userId, // TODO: unused
+        @RequestBody Character.UserInputCharacter newCharacter
     ) {
         // TODO: user not found
         // TODO: duplicated character
-        String newId = characterService.createCharacter(newCharacter);
 
         try{
-            String newId = characterService.createCharacter(newCharacter);
+            String newId = characterService.createCharacter(newCharacter, userId);
 
             var url = MvcUriComponentsBuilder.fromMethodName(
                     CharacterController.class,
@@ -65,7 +59,7 @@ public class CharacterController {
                 .toUri();
 
             return ResponseEntity.created(url).build();
-        }catch(DuplicatedCharacterException e){
+        }catch(DuplicatedResourceException e){
             log.info("Personaje duplicado :P");
             return ResponseEntity.notFound().build();
         }
@@ -74,69 +68,40 @@ public class CharacterController {
 
     // Servicio para obtener todos los personajes de un usuario
     @GetMapping("{userid}/characters")
-    public List<@Valid Character> getCharacters(@PathVariable("userid") String id) {
+    public List<Character> getCharacters(@PathVariable("userid") String id) {
         // TODO: user not found
         return characterService.getCharactersByUser(id);
     }
 
-    
+
     /**
-     * @param characterId Identificador del personaje a borrar
-     * @throws CharacterNotFoundException Si el ID no existe
+     * @param userId Nombre del usuario al que pertenece el personaje
+     * @param characterName Nombre del personaje a borrar
+     * @throws ResourceNotFoundException Si el ID no existe
      */
-    @DeleteMapping("{userid}/characters/{characterid}")
-    public ResponseEntity<Void> deleteCharacter(@PathVariable("userid") String userId, @PathVariable("characterid") String characterId) throws CharacterNotFoundException {
-        characterService.deleteCharacter(characterId);
+    @DeleteMapping("{userid}/characters/{characterName}")
+    public ResponseEntity<Void> deleteCharacter(
+        @PathVariable("userid") String userId, @PathVariable("characterName")
+        String characterName
+    ) throws ResourceNotFoundException {
+        characterService.deleteCharacter(userId, characterName);
         return ResponseEntity.noContent().build();
     }
 
-    
+
     /**
-     * <code>GET /users/{userid}/characters/{characterid}</code>
+     * <code>GET /users/{userid}/characters/{characterName}</code>
      * @param userId Identificador del usuario.
-     * @param characterId Identificador del character.
-     * @return <code>200 OK</code> con el post solicitado, <code>404 Not
-     * found</code> si no existe el ID proporcionado.
+     * @param characterName Nombre del character.
+     * @return Personaje solicitado
      */
-    @GetMapping("{userid}/characters/{characterid}")
+    @GetMapping("{userid}/characters/{characterName}")
     public @Valid Character getCharacter(
-        @PathVariable("userid") @NotBlank String userId, // TODO: unused
-        @PathVariable("characterid") @ValidObjectId ObjectId characterId
+        @PathVariable("userid") @NotBlank String userId,
+        @PathVariable("characterName") @NotBlank String characterName
     ) throws ResourceNotFoundException {
-        return characterService.getCharacter(characterId);
+        return characterService.getCharacter(userId, characterName);
     }
 
-    /*
-    // Servicio para obtener un usuario por ID
-    @GetMapping("{user-id}")
-    public ResponseEntity<@NonNull User> getUser(@PathVariable("id") String id) {
-        try {
-            return ResponseEntity.ok(userService.getUser(id));
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    // Servicio para crear un nuevo usuario
-    @PostMapping
-    public ResponseEntity<@NonNull User> addUser(@RequestBody User user) {
-        try{
-            user = userService.addUser(user);
-
-            return ResponseEntity
-                .created(MvcUriComponentsBuilder.fromMethodName(
-                    UserController.class, "getUser",
-                    user.id()).build().toUri())
-                .body(user);
-        } catch (DuplicatedResourceException e) {
-            return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .location(MvcUriComponentsBuilder.fromMethodName(
-                    UserController.class, "getUser",
-                    user.id()).build().toUri())
-                .build();
-        }
-    }
-    */
 }
 

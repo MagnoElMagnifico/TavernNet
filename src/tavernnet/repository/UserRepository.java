@@ -1,9 +1,11 @@
 package tavernnet.repository;
 
+import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.Set;
 
 import tavernnet.model.Post;
@@ -13,7 +15,7 @@ import tavernnet.model.User;
 public interface UserRepository extends MongoRepository<User, String> {
     // TODO: username no es _id realmente?
     @Query("{'username':  '?0'}")
-    Set<User> findByUsername(String username);
+    Collection<User> findByUsername(String username);
 
     // No usar deleteById ya que ignora si no existe
     @Query(value = "{ '_id': ?0 }", delete = true)

@@ -8,7 +8,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 import tavernnet.model.Character;
-import tavernnet.model.Post;
 
 @Repository
 public interface CharacterRepository extends MongoRepository<Character, ObjectId> {
@@ -21,15 +20,22 @@ public interface CharacterRepository extends MongoRepository<Character, ObjectId
     @Query("{ 'user': '?0' }")
     List<Character> getCharactersByUser(String username);
 
+    @Query(value = "{ 'user': ?0, 'name': ?1 }", exists = true)
+    boolean existsByName(String username, String characterName);
+
+    @Query("{ 'user': '?0', 'name': ?1 }")
+    Character getCharacterByName(String username, String characterName);
+
     /**
      * @param characterid Id del personaje del que obtener los datos.
-     * @return PostView que tiene el ID dato o <code>null</code> si no existe.
+     * @return Character que tiene el ID dado.
      */
     @Query("{ '_id': '?0' }")
     Character getCharacterById(ObjectId characterid);
 
+
     @Query(value = "{ '_id': '?0' }", delete = true)
-    void deleteCharacterById(ObjectId characterid);
+    Character deleteCharacterById(ObjectId characterid);
 
     /**
      * @param character Guarda el personaje en la base de datos.

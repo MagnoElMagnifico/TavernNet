@@ -1,13 +1,17 @@
 package tavernnet.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.validation.constraints.NotBlank;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import tavernnet.utils.ObjectIdSerializer;
+import tavernnet.utils.ValidObjectId;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
-@Document(collection = "characters")
+
 /*public record Character (
     @Id
     String id,
@@ -19,6 +23,7 @@ import java.util.ArrayList;
     Stats stats,
     ArrayList<Action> actions
 ){}*/
+@Document(collection = "characters")
 public class Character {
     /** Formato esperado del usuario al hacer POST para crear un personaje */
     public record UserInputCharacter (
@@ -36,7 +41,8 @@ public class Character {
 
     // Datos internos
     @Id
-    private final String id;
+    @JsonSerialize(using = ObjectIdSerializer.class)
+    private ObjectId id;
     private String name;
     private String user;
     private String biography;
@@ -47,10 +53,12 @@ public class Character {
     private ArrayList<Action> actions;
     private LocalDateTime date;
 
-    public Character(String _id, String name, String user, String biography,
+    public Character(){}
+
+    public Character(ObjectId id, String name, String user, String biography,
                      String race, ArrayList<String> languages, String alignment,
                      Stats stats, ArrayList<Action> actions, LocalDateTime date) {
-        this.id = _id;
+        this.id = id;
         this.name = name;
         this.user = user;
         this.biography = biography;
@@ -70,8 +78,12 @@ public class Character {
             character.actions, LocalDateTime.now());
     }
 
-    public String getId() {
+    public ObjectId getId() {
         return id;
+    }
+
+    public void setId(ObjectId id) {
+        this.id = id;
     }
 
     public String getUser() {

@@ -2,6 +2,7 @@ package tavernnet.controller;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
+import org.bson.types.ObjectId;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.User;
 import tavernnet.service.UserService;
 
+import java.util.Collection;
 import java.util.Set;
 
 @RestController
@@ -30,13 +32,17 @@ public class UserController {
 
     // Servicio para obtener todos los usuarios
     @GetMapping()
-    public @NonNull Set<@Valid User> getUsers() {
+    public @NonNull Collection<@Valid User> getUsers() {
         return userService.getUsers();
     }
 
     // Servicio para obtener un usuario por ID
     @GetMapping("{userid}")
-    public @Valid User getUser(@PathVariable("userid") String id) throws ResourceNotFoundException {
+    public User getUser(
+        @PathVariable("userid")
+        //@NotBlank(message = "Missing userId to retrieve")
+        String id
+    ) throws ResourceNotFoundException {
         return userService.getUser(id);
     }
 
@@ -48,11 +54,11 @@ public class UserController {
      */
     // TODO: errores de permisos
     @DeleteMapping("{userid}")
-    public ResponseEntity<Void> deletePost(
+    public ResponseEntity<Void> deleteUser(
         @PathVariable("userid")
         @NotBlank(message = "Missing userId to retrieve")
         String userId
-    ) throws UserNotFoundException {
+    ) throws ResourceNotFoundException {
         userService.deleteUser(userId);
         return ResponseEntity.noContent().build();
     }

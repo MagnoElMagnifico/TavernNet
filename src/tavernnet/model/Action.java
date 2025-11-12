@@ -15,6 +15,8 @@ public class Action {
     private ArrayList<Integer> damageDice;
     private String damageType;
 
+    public Action(){}
+
     public Action(String name, Type type, int range, int toHit, ArrayList<Integer> damageDice, String damageType) {
         this.name = name;
         this.type = type;

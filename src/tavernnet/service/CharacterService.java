@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 
+import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Character;
 import tavernnet.repository.CharacterRepository;
@@ -45,14 +46,18 @@ public class CharacterService {
     }
 
     /**
-     * @param id Identificador del character.
+     * @param userid Identificador del usuario.
+     * @param characterName Nombre del personaje
      * @return El character que tiene el id especificado.
      * @throws ResourceNotFoundException Si el character no se encuentra.
      */
-    public @Valid Character getCharacter(@NotBlank ObjectId id) throws ResourceNotFoundException {
-        @Valid Character character = characterbase.getCharacterById(id);
+    public @Valid Character getCharacter(@NotBlank String userid,
+                                         @NotBlank String characterName
+    ) throws ResourceNotFoundException {
+        @Valid Character character = characterbase
+            .getCharacterByName(userid, characterName);
         if (character == null) {
-            throw new ResourceNotFoundException("Character", id.toString());
+            throw new ResourceNotFoundException("Character", characterName);
         }
         return character;
     }
@@ -61,28 +66,29 @@ public class CharacterService {
      * @param newCharacter Contenido del nuevo personaje a crear.
      * @return Id del nuevo character creado.
      */
-    public String createCharacter(tavernnet.model.@Valid Character newCharacter) throws DuplicatedCharacterException {
-
-        // La fecha de creacion tiene que ser la de ahora
-        newCharacter.setDate(LocalDateTime.now());
+    public String createCharacter(Character.UserInputCharacter newCharacter, String userId) throws DuplicatedResourceException {
 
         // El personaje debe ser nuevo
-        if (characterbase.existsById(newCharacter.getId())) {
-            // TODO: evitar esto de alguna forma
-            throw new DuplicatedCharacterException(newCharacter);
+        if (characterbase.existsByName(userId, newCharacter.name())) {
+            throw new DuplicatedResourceException(newCharacter);
         }
+        Character realCharacter = new Character(newCharacter, userId);
+        // La fecha de creacion tiene que ser la de ahora
+        realCharacter.setDate(LocalDateTime.now());
 
 
-        newCharacter = characterbase.save(newCharacter);
-        log.info("Created character with id '{}'", newCharacter.getClass());
-        return newCharacter.getId();
+        realCharacter = characterbase.save(realCharacter);
+        log.info("Created character with id '{}'", realCharacter.getClass());
+        return realCharacter.getId().toHexString();
     }
 
-    public void deleteCharacter(@NotBlank String characterId) throws CharacterNotFoundException {
-        Character deletedCharacter = characterbase.deleteCharacterById(characterId);
+    public void deleteCharacter(@NotBlank String username, @NotBlank String characterName) throws ResourceNotFoundException {
+        Character  deletedCharacter = characterbase.getCharacterByName(username, characterName);
         if (deletedCharacter == null) {
-            throw new CharacterNotFoundException(characterId);
+            throw new ResourceNotFoundException("Character", characterName);
         }
+        characterbase.deleteCharacterById(deletedCharacter.getId());
+
     }
 }
 

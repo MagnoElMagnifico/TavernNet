@@ -9,6 +9,7 @@ public class Stats {
     private HashMap<String, Integer> passive;
     private HashMap<String, Integer> combat;
 
+    public Stats(){}
 
     public Stats(HashMap<String, Integer> main, HashMap<String,
                 Integer> modifiers, HashMap<String, Integer> passive,
