@@ -16,16 +16,35 @@ con atributos, clases y estadísticas. Los usuarios podrán:
 
 # Ejecutar
 
-Para ejecutar una versión de desarrollo (con _live-reloading_) usa los
-siguientes comandos:
+Primero se debe generar un certificado válido para firmar tokens de
+autenticación JWT, que use curva elíptica:
 
 ```bash
-docker compose up -d
-./gradlew --no-daemon bootRun # En Windows es gradlew.bat
+# Generar clave privada ECC
+openssl ecparam -name prime256v1 -genkey -noout -out jwt_ec.key.pem
 
-# Recompilar cambios
-./gradlew build
+# Generar certificado autofirmado (válido 10 años)
+openssl req -new -x509 -key jwt_ec.key.pem -sha256 -days 3650 -subj "/CN=jwt" -out jwt_ec.crt.pem
+
+# Empaquetar en un p12
+openssl pkcs12 -export \
+  -inkey jwt_ec.key.pem \
+  -in jwt_ec.crt.pem \
+  -name jwt \
+  -out keys.p12 \
+  -passout pass:XXXX \
+  -keypbe AES-256-CBC \
+  -certpbe AES-256-CBC \
+  -macalg sha256 \
+  -maciter \
+  -iter 10000
 ```
+
+Guarda el archivo `keys.p12` generado en `resources` con ese mismo nombre, y
+luego configura las contraseñas como variables del entorno en un archivo `.env`.
+
+Luego, para ejecutar una versión de desarrollo (con _live-reloading_) ejecuta el
+script `./rundev.sh` y usa `./gradlew build` para recompilar.
 
 Luego, para subir algunos datos de prueba a la base de datos:
 
@@ -33,6 +52,8 @@ Luego, para subir algunos datos de prueba a la base de datos:
 docker cp db_script.js tavernnet-database-1:/tmp
 docker exec tavernnet-database-1 mongosh /tmp/db_script.js
 ```
+
+Para la versión de producción, usa el `.jar` generado.
 
 # Características
 
@@ -65,43 +86,43 @@ Mensajes:
 
 Usuarios y personajes:
 
-| Verbo     | URL                                                 | Descripción                           |
-|-----------|-----------------------------------------------------|---------------------------------------|
-| `POST`    | `/users`                                            | Crear nuevo usuario                   |
-| `GET`     | `/users/{userid}`                                   | Consultar perfil de usuario           |
-| `DELETE`  | `/users/{userid}`                                   | Borrar usuario                        |
-| `PATCH`   | `/users/{userid}`                                   | Cambiar contraseña del usuario        |
-| `POST`    | `/users/{userid}/characters`                        | Crear personaje                       |
-| `GET`     | `/users/{userid}/characters/{character-name}`       | Consultar stats de personaje          |
-| `PATCH`   | `/users/{userid}/characters/{character-name}`       | Editar stats de personaje             |
-| `DELETE`  | `/users/{userid}/characters/{character-name}`       | Borrar el personaje                   |
+| Verbo    | URL                                           | Descripción                    | Autenticacion |
+|----------|-----------------------------------------------|--------------------------------|---------------|
+| `POST`   | `/users`                                      | Crear nuevo usuario            | No            |
+| `GET`    | `/users/{userid}`                             | Consultar perfil de usuario    | No            |
+| `DELETE` | `/users/{userid}`                             | Borrar usuario                 | Si            |
+| `PATCH`  | `/users/{userid}`                             | Cambiar contraseña del usuario | Si            |
+| `POST`   | `/users/{userid}/characters`                  | Crear personaje                | Si            |
+| `GET`    | `/users/{userid}/characters/{character-name}` | Consultar stats de personaje   | No            |
+| `PATCH`  | `/users/{userid}/characters/{character-name}` | Editar stats de personaje      | Si            |
+| `DELETE` | `/users/{userid}/characters/{character-name}` | Borrar el personaje            | Si            |
 
 Creación de posts:
 
-| Verbo    | URL                                                 | Descripción                           |
-|----------|-----------------------------------------------------|---------------------------------------|
-| `GET`    | `/posts?for={characterid}`                          | Lista de últimos posts                |
-| `POST`   | `/posts`                                            | Crear un post                         |
-| `GET`    | `/posts/{postid}`                                   | Consultar un post                     |
-| `DELETE` | `/posts/{postid}`                                   | Borrar un post                        |
-| `POST`   | `/posts/{postid}/like`                              | Dar un like a un post                 |
-| `DELETE` | `/posts/{postid}/like`                              | Quitar un like a un post              |
-| `GET`    | `/posts/{postid}/comments`                          | Obtener lista de comentarios          |
-| `POST`   | `/posts/{postid}/comments`                          | Enviar comentario a un post           |
+| Verbo    | URL                        | Descripción                  | Autenticacion |
+|----------|----------------------------|------------------------------|---------------|
+| `GET`    | `/posts?for={characterid}` | Lista de últimos posts       | No            |
+| `POST`   | `/posts`                   | Crear un post                | Si            |
+| `GET`    | `/posts/{postid}`          | Consultar un post            | No            |
+| `DELETE` | `/posts/{postid}`          | Borrar un post               | Si            |
+| `POST`   | `/posts/{postid}/like`     | Dar un like a un post        | Si            |
+| `DELETE` | `/posts/{postid}/like`     | Quitar un like a un post     | Si            |
+| `GET`    | `/posts/{postid}/comments` | Obtener lista de comentarios | No            |
+| `POST`   | `/posts/{postid}/comments` | Enviar comentario a un post  | Si            |
 
 Mensajes:
 
-| Verbo     | URL                                             | Descripción                              |
-|-----------|-------------------------------------------------|------------------------------------------|
-| `GET`     | `/messages?to={cid}`                            | Obtener chats del usuario `cid`          |
-| `GET`     | `/messages?to={cid1}&from={cid2}&since={date}`  | Obtener chat entre `cid1` (logeado) y `cid2` |
-| `POST`    | `/messages`                                     | Enviar mensajes como `cid1` a `cid2` (en el cuerpo) |
-| `POST`    | `/groups`                                       | Crear nuevo grupo                        |
-| `GET`     | `/groups?of={cid}`                              | Obtener grupos a los que pertenece `cid` |
-| `GET`     | `/groups/{groupid}`                             | Obtener mensajes del grupo               |
-| `POST`    | `/groups/{groupid}`                             | Enviar mensajes al grupo                 |
-|`PUT/PATCH`| `/groups/{groupid}`                             | Editar/administrar grupo                 |
-| `DELETE`  | `/groups/{groupid}`                             | Borrar grupo                             |
+| Verbo       | URL                                            | Descripción                                         | Autenticacion |
+|-------------|------------------------------------------------|-----------------------------------------------------|---------------|
+| `GET`       | `/messages?to={cid}`                           | Obtener chats del usuario `cid`                     | Si            |
+| `GET`       | `/messages?to={cid1}&from={cid2}&since={date}` | Obtener chat entre `cid1` (logeado) y `cid2`        | Si            |
+| `POST`      | `/messages`                                    | Enviar mensajes como `cid1` a `cid2` (en el cuerpo) | Si            |
+| `POST`      | `/groups`                                      | Crear nuevo grupo                                   | Si            |
+| `GET`       | `/groups?of={cid}`                             | Obtener grupos a los que pertenece `cid`            | Si            |
+| `GET`       | `/groups/{groupid}`                            | Obtener mensajes del grupo                          | Si            |
+| `POST`      | `/groups/{groupid}`                            | Enviar mensajes al grupo                            | Si            |
+| `PUT/PATCH` | `/groups/{groupid}`                            | Editar/administrar grupo                            | Si            |
+| `DELETE`    | `/groups/{groupid}`                            | Borrar grupo                                        | Si            |
 
 NOTA: La notificación de nuevos mensajes requiere _pulling_.
 

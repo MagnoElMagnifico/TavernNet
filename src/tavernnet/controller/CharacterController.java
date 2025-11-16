@@ -1,23 +1,19 @@
 package tavernnet.controller;
 
 import jakarta.validation.Valid;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import jakarta.validation.constraints.NotBlank;
-import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 import tavernnet.exception.*;
-import tavernnet.model.Post;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.service.UserService;
 import tavernnet.service.CharacterService;
 import tavernnet.model.Character;
-import tavernnet.utils.ValidObjectId;
 
 import java.util.List;
 
@@ -42,7 +38,7 @@ public class CharacterController {
     @PostMapping("{userid}/characters")
     public ResponseEntity<Void> createCharacter(
         @PathVariable("userid") @NotBlank String userId, // TODO: unused
-        @RequestBody Character.UserInputCharacter newCharacter
+        @RequestBody Character.CreationRequest newCharacter
     ) throws DuplicatedResourceException {
 
             String newId = characterService.createCharacter(newCharacter, userId);

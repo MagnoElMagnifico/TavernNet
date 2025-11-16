@@ -1,25 +1,24 @@
 package tavernnet.repository;
 
-import org.bson.types.ObjectId;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collection;
-import java.util.Set;
+import java.util.Optional;
 
-import tavernnet.model.Post;
 import tavernnet.model.User;
 
 @Repository
+@NullMarked
 public interface UserRepository extends MongoRepository<User, String> {
-    // TODO: username no es _id realmente?
-    @Query("{'username':  '?0'}")
-    Collection<User> findByUsername(String username);
+
+    @Query("{'_id':  '?0'}")
+    Optional<User> findByUsername(String username);
 
     // No usar deleteById ya que ignora si no existe
     @Query(value = "{ '_id': ?0 }", delete = true)
-    User deleteUserById(String id);
+    Optional<User> deleteUserById(String id);
 
     /**
      * @param user Guarda el usuario en la base de datos.

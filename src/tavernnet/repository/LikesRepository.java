@@ -1,6 +1,7 @@
 package tavernnet.repository;
 
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.bson.Document;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Repository;
  * <code>Like</code> en el modelo (no se usaria), se implementa de forma manual.
  */
 @Repository
+@NullMarked
 public class LikesRepository {
     private final MongoTemplate mongo;
 

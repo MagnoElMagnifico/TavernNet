@@ -1,7 +1,6 @@
 package tavernnet.controller;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +14,7 @@ import tavernnet.model.PostView;
 import tavernnet.service.PostService;
 import tavernnet.utils.ValidObjectId;
 
-import java.util.List;
+import java.util.Collection;
 
 @RestController
 @RequestMapping("posts")
@@ -34,7 +33,7 @@ public class PostController {
     // TODO: parámetros para personalizar el algoritmo
     // TODO: paginación
     @GetMapping
-    public List<@Valid PostView> getPosts() {
+    public Collection<PostView.@Valid PostResponse> getPosts() {
         return posts.getPosts();
     }
 
@@ -46,7 +45,7 @@ public class PostController {
     @PostMapping
     public ResponseEntity<Void> createPost(
         @RequestBody @Valid
-        Post.UserInputPost newPost,
+        Post.PostRequest newPost,
         // TODO: borrar cuando se implemente autenticacion
         @RequestParam(value = "author", required = true)
         @ValidObjectId(message = "Invalid character id author of the post")
@@ -71,7 +70,7 @@ public class PostController {
      * found</code> si no existe el ID proporcionado.
      */
     @GetMapping("{postid}")
-    public @Valid PostView getPost(
+    public @Valid PostView.PostResponse getPost(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid postId to retrieve")
         ObjectId postId
@@ -143,12 +142,12 @@ public class PostController {
      */
     // TODO: paginacion si hay muchos comentarios
     @GetMapping("{postid}/comments")
-    public List<Comment> getCommentsByPost(
+    public Collection<Comment.CommentResponse> getCommentsByPost(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid postId to retrieve comments from")
         ObjectId postId
     ) throws ResourceNotFoundException {
-        return posts.getCommentsByPost(postId);
+        return posts.getCommentsByPost(postId).stream().map(Comment.CommentResponse::new).toList();
     }
 
     /**
@@ -165,7 +164,7 @@ public class PostController {
         ObjectId postId,
 
         @RequestBody @Valid
-        Comment.UserInputComment newComment,
+        Comment.CommentRequest newComment,
 
         // TODO: borrar cuando se implemente autenticacion
         @RequestParam(value = "author", required = true)

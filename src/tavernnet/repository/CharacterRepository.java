@@ -1,6 +1,7 @@
 package tavernnet.repository;
 
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -10,6 +11,7 @@ import java.util.List;
 import tavernnet.model.Character;
 
 @Repository
+@NullMarked
 public interface CharacterRepository extends MongoRepository<Character, ObjectId> {
     /**
      * @return Lista de todos los posts en la base de datos.
