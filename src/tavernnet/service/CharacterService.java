@@ -90,5 +90,7 @@ public class CharacterService {
         characterbase.deleteCharacterById(deletedCharacter.getId());
 
     }
+
+
 }
 

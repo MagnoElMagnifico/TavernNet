@@ -1,5 +1,8 @@
 package tavernnet.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.github.fge.jsonpatch.JsonPatchException;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -7,21 +10,26 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import tavernnet.exception.*;
 import tavernnet.model.*;
 import tavernnet.repository.*;
+import com.github.fge.jsonpatch.JsonPatch;
+import com.github.fge.jsonpatch.JsonPatchOperation;
+import tavernnet.utils.PatchUtils;
+
 
 @Service
 public class UserService {
     private final UserRepository userbase;
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
+    private final PatchUtils patchutils;
+
     @Autowired
-    public UserService(UserRepository userbase) {
+    public UserService(UserRepository userbase, PatchUtils patchutils) {
         this.userbase = userbase;
+        this.patchutils = patchutils;
     }
 
     /**
@@ -60,4 +68,12 @@ public class UserService {
             .orElseThrow(() -> new ResourceNotFoundException("User", userId));
     }
 
+    public User updateUser(String userId, List<Map<String, Object>> changes)
+        throws ResourceNotFoundException, JsonPatchException {
+        User user = userbase.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        User updated = patchutils.applyPatch(user, changes);
+        return userbase.save(updated);
+    }
+
 }
+

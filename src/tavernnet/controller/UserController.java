@@ -1,5 +1,6 @@
 package tavernnet.controller;
 
+import com.github.fge.jsonpatch.JsonPatchException;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
 import org.bson.types.ObjectId;
@@ -15,8 +16,10 @@ import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.User;
 import tavernnet.service.UserService;
-
+import com.github.fge.jsonpatch.JsonPatchOperation;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @RestController
@@ -65,7 +68,8 @@ public class UserController {
 
     // Servicio para crear un nuevo usuario
     @PostMapping
-    public ResponseEntity<@Valid User> addUser(@RequestBody User user) throws DuplicatedResourceException {
+    public ResponseEntity<@Valid User> addUser(@RequestBody User user
+    ) throws DuplicatedResourceException {
         String newId = userService.createUser(user);
         var url = MvcUriComponentsBuilder.fromMethodName(
                 UserController.class,
@@ -75,4 +79,13 @@ public class UserController {
             .toUri();
         return ResponseEntity.created(url).body(user);
     }
+
+    @PatchMapping("{userid}")
+    public ResponseEntity<@Valid User> updateBook(
+        @PathVariable("userid") String userId,
+        @RequestBody List<Map<String, Object>> changes
+    ) throws ResourceNotFoundException, JsonPatchException {
+        return ResponseEntity.ok(userService.updateUser(userId, changes));
+    }
+
 }
