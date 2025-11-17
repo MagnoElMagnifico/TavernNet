@@ -2,6 +2,11 @@
 HELP.md
 private.md
 
+### Security and secrets ###
+**.pem
+**.p12
+.env
+
 ### Binary and temporal files ###
 # Compiled class file
 *.class

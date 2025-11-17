@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,31 +20,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+
 @RestController
 @RequestMapping("users")
 public class UserController {
-    UserService userService;
-    private static final Logger log = LoggerFactory.getLogger(UserController.class);
+    private final UserService user;
 
     @Autowired
-    public UserController(UserService userService) {
-        this.userService = userService;
+    public UserController(UserService user) {
+        this.user = user;
     }
 
     // Servicio para obtener todos los usuarios
     @GetMapping()
-    public @NonNull Collection<@Valid User> getUsers() {
-        return userService.getUsers();
+    public @NonNull Collection<User.@Valid PublicProfile> getUsers() {
+        return user.getUsers();
     }
 
     // Servicio para obtener un usuario por ID
     @GetMapping("{userid}")
-    public User getUser(
-        @PathVariable("userid")
-        //@NotBlank(message = "Missing userId to retrieve")
-        String id
+    public @Valid User.PublicProfile getUser(
+        @PathVariable("userid") @NotBlank String id
     ) throws ResourceNotFoundException {
-        return userService.getUser(id);
+        return user.getUser(id);
     }
 
     /**
@@ -62,22 +58,23 @@ public class UserController {
         @NotBlank(message = "Missing userId to retrieve")
         String userId
     ) throws ResourceNotFoundException {
-        userService.deleteUser(userId);
+        user.deleteUser(userId);
         return ResponseEntity.noContent().build();
     }
 
     // Servicio para crear un nuevo usuario
     @PostMapping
-    public ResponseEntity<@Valid User> addUser(@RequestBody User user
+    public ResponseEntity<Void> addUser(
+        @RequestBody @Valid User.LoginRequest request
     ) throws DuplicatedResourceException {
-        String newId = userService.createUser(user);
+        user.createUser(request);
         var url = MvcUriComponentsBuilder.fromMethodName(
                 UserController.class,
                 "getUser",
-                newId)
+                request.username())
             .build()
             .toUri();
-        return ResponseEntity.created(url).body(user);
+        return ResponseEntity.created(url).build();
     }
 
     @PatchMapping("{userid}")

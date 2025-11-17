@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.Collection;
 
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Comment;
@@ -45,8 +45,8 @@ public class PostService {
      */
     // TODO: parámetros para personalizar el algoritmo
     // TODO: paginación
-    public List<PostView> getPosts() {
-        return postsViewRepo.findAll();
+    public Collection<PostView.PostResponse> getPosts() {
+        return postsViewRepo.findAll().stream().map(PostView.PostResponse::new).toList();
     }
 
     /**
@@ -54,10 +54,11 @@ public class PostService {
      * @return El post que tiene el id especificado.
      * @throws ResourceNotFoundException Si el post no se encuentra.
      */
-    public PostView getPost(ObjectId id) throws ResourceNotFoundException {
-        return postsViewRepo
+    public PostView.PostResponse getPost(ObjectId id) throws ResourceNotFoundException {
+        return new PostView.PostResponse(postsViewRepo
             .findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Post", String.valueOf(id)));
+            .orElseThrow(() -> new ResourceNotFoundException("Post", String.valueOf(id)))
+        );
     }
 
     /**
@@ -65,7 +66,7 @@ public class PostService {
      * @return Id del nuevo post creado.
      */
     public ObjectId createPost(
-        Post.UserInputPost newPost,
+        Post.PostRequest newPost,
         ObjectId characterId
     ) throws ResourceNotFoundException {
         if (!charRepo.existsById(characterId)) {
@@ -84,10 +85,9 @@ public class PostService {
      * @throws ResourceNotFoundException Si el ID no existe
      */
     public void deletePost(ObjectId postId) throws ResourceNotFoundException {
-        Post deletedPost = postsRepo.deletePostById(postId);
-        if (deletedPost == null) {
-            throw new ResourceNotFoundException("Post", String.valueOf(postId));
-        }
+        postsRepo
+            .deletePostById(postId)
+            .orElseThrow(() -> new ResourceNotFoundException("Post", String.valueOf(postId)));
 
         // Borrar en cascada los elementos asociados al post
         commentRepo.deleteByPostId(postId);
@@ -99,7 +99,7 @@ public class PostService {
      * @return Lista de comentarios del post especificado
      * @throws ResourceNotFoundException Si el ID no existe
      */
-    public List<Comment> getCommentsByPost(
+    public Collection<Comment> getCommentsByPost(
         ObjectId postId
     ) throws ResourceNotFoundException {
         // Buscar si existe un post con este ID
@@ -108,12 +108,9 @@ public class PostService {
         }
 
         // Obtener la lista de comentarios
-        List<Comment> comments = commentRepo.getCommentsByPost(postId);
-        if (comments == null) {
-            throw new ResourceNotFoundException("Post", String.valueOf(postId));
-        }
-
-        return comments;
+        return commentRepo
+            .getCommentsByPost(postId)
+            .orElseThrow(() -> new ResourceNotFoundException("Post", String.valueOf(postId)));
     }
 
     /**
@@ -125,7 +122,7 @@ public class PostService {
     public ObjectId createComment(
         ObjectId postId,
         ObjectId characterId,
-        Comment.UserInputComment newComment
+        Comment.CommentRequest newComment
     ) throws ResourceNotFoundException {
         // Comprobar si el post existe o no
         if (!postsRepo.existsById(postId)) {

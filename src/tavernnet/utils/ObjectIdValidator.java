@@ -14,6 +14,7 @@ public class ObjectIdValidator implements ConstraintValidator<ValidObjectId, Obj
             return ObjectId.isValid(str);
         }
 
-        return value instanceof ObjectId; // un ObjectId ya es válido, cualquier otro tipo de datos no
+        // Un ObjectId ya es válido, cualquier otro tipo de datos no
+        return value instanceof ObjectId;
     }
 }

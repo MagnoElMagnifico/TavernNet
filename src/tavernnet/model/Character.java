@@ -1,63 +1,61 @@
 package tavernnet.model;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.validation.constraints.NotBlank;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import tavernnet.utils.ObjectIdSerializer;
-import tavernnet.utils.ValidObjectId;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.Collection;
 
-
-/*public record Character (
-    @Id
-    String id,
-    String name,
-    String user,
-    String biography,
-    String alignment,
-    LocalDateTime date,
-    Stats stats,
-    ArrayList<Action> actions
-){}*/
 @Document(collection = "characters")
 public class Character {
-    /** Formato esperado del usuario al hacer POST para crear un personaje */
-    public record UserInputCharacter (
+    // TODO: validacion
+
+    /** DTO para el POST de crear un personaje */
+    public record CreationRequest(
         @NotBlank(message = "Name must be not null or blank")
         String name,
         @NotBlank(message = "User must be not null or blank")
         String user,
         String biography,
         String race,
-        ArrayList<String> languages,
+        Collection<String> languages,
         String alignment,
         Stats stats,
-        ArrayList<Action> actions
+        Collection<Action> actions
     ) {}
 
-    // Datos internos
+    public record Response (
+        String id,
+        String name,
+        String user,
+        String biography,
+        String race,
+        Collection<String> languages,
+        String alignment,
+        Stats stats,
+        Collection<Action> actions,
+        LocalDateTime date
+    ) {}
+
     @Id
-    @JsonSerialize(using = ObjectIdSerializer.class)
     private ObjectId id;
     private String name;
     private String user;
     private String biography;
     private String race;
-    private ArrayList<String> languages;
+    private Collection<String> languages;
     private String alignment;
     private Stats stats;
-    private ArrayList<Action> actions;
+    private Collection<Action> actions;
     private LocalDateTime date;
 
     public Character(){}
 
     public Character(ObjectId id, String name, String user, String biography,
-                     String race, ArrayList<String> languages, String alignment,
-                     Stats stats, ArrayList<Action> actions, LocalDateTime date) {
+                     String race, Collection<String> languages, String alignment,
+                     Stats stats, Collection<Action> actions, LocalDateTime date) {
         this.id = id;
         this.name = name;
         this.user = user;
@@ -71,7 +69,7 @@ public class Character {
     }
 
     /** Creacion de un personaje por el usuario */
-    public Character(Character.UserInputCharacter character, String author) {
+    public Character(CreationRequest character, String author) {
         // Dejar el ID a null hará que la base de datos asigne uno automáticamente
         this(null, character.name, author, character.biography, character.race,
             character.languages, character.alignment, character.stats,
@@ -102,11 +100,11 @@ public class Character {
         this.race = race;
     }
 
-    public ArrayList<String> getLanguages() {
+    public Collection<String> getLanguages() {
         return languages;
     }
 
-    public void setLanguages(ArrayList<String> languages) {
+    public void setLanguages(Collection<String> languages) {
         this.languages = languages;
     }
 
@@ -142,11 +140,11 @@ public class Character {
         this.stats = stats;
     }
 
-    public ArrayList<Action> getActions() {
+    public Collection<Action> getActions() {
         return actions;
     }
 
-    public void setActions(ArrayList<Action> actions) {
+    public void setActions(Collection<Action> actions) {
         this.actions = actions;
     }
 

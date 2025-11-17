@@ -1,4 +1,4 @@
-package tavernnet;
+package tavernnet.repository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,19 +10,19 @@ import org.springframework.stereotype.Component;
 public class MongoChecker implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(MongoChecker.class);
-    private final MongoTemplate mongoTemplate;
+    private final MongoTemplate mongo;
 
-    public MongoChecker(MongoTemplate mongoTemplate) {
-        this.mongoTemplate = mongoTemplate;
+    public MongoChecker(MongoTemplate mongo) {
+        this.mongo = mongo;
     }
 
     @Override
     public void run(String... args) {
         try {
-            String dbName = mongoTemplate.getDb().getName();
+            String dbName = mongo.getDb().getName();
             log.info("Connected to MongoDB database: {}", dbName);
 
-            var collections = mongoTemplate.getCollectionNames();
+            var collections = mongo.getCollectionNames();
             log.info("Available collections: {}", collections);
         } catch (Exception e) {
             log.error("Error checking MongoDB connection: {}", e.getMessage(), e);

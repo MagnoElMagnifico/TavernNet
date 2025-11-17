@@ -1,11 +1,8 @@
 package tavernnet.service;
 
-import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
-import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +63,7 @@ public class CharacterService {
      * @param newCharacter Contenido del nuevo personaje a crear.
      * @return Id del nuevo character creado.
      */
-    public String createCharacter(Character.UserInputCharacter newCharacter, String userId) throws DuplicatedResourceException {
+    public String createCharacter(Character.CreationRequest newCharacter, String userId) throws DuplicatedResourceException {
 
         // El personaje debe ser nuevo
         if (characterbase.existsByName(userId, newCharacter.name())) {
