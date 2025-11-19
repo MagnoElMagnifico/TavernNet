@@ -13,6 +13,7 @@ import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.User;
 import tavernnet.service.UserService;
+import tavernnet.utils.patch.JsonPatchOperation;
 import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 
 import java.util.Collection;
@@ -80,7 +81,7 @@ public class UserController {
     @PatchMapping("{userid}")
     public ResponseEntity<@Valid User> updateBook(
         @PathVariable("userid") String userId,
-        @RequestBody List<Map<String, Object>> changes
+        @RequestBody List<JsonPatchOperation> changes
     ) throws ResourceNotFoundException, JsonPatchFailedException {
         return ResponseEntity.ok(user.updateUser(userId, changes));
     }

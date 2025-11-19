@@ -50,6 +50,8 @@ dependencies {
     // Anotaciones de validación de código
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
     // Live reloading tras compilar
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     // developmentOnly 'org.springframework.boot:spring-boot-docker-compose'

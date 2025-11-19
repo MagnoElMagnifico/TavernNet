@@ -1,8 +1,8 @@
 package tavernnet.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.fge.jsonpatch.JsonPatchException;
+import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +87,7 @@ public class UserService implements UserDetailsService {
     }
 
     public User updateUser(String userId, List<JsonPatchOperation> changes)
-        throws ResourceNotFoundException, JsonPatchException {
+        throws ResourceNotFoundException, JsonPatchFailedException {
         User user = userbase.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId));
         JsonNode updated_node = JsonPatch.apply(changes, mapper.convertValue(user, JsonNode.class));
         User updated = mapper.convertValue(updated_node, User.class);
