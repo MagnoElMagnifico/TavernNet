@@ -42,18 +42,12 @@ dependencies {
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     // developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 
-    // Para personalizar serializacion de ObjectId
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-
     // Librería de JsonPatch
     implementation 'com.github.java-json-tools:json-patch:1.13'
-}
 
     // Autenticacion y autorizacion
+    //testImplementation 'org.springframework.security:spring-security-test'
     implementation 'org.springframework.boot:spring-boot-starter-security'
-    testImplementation 'org.springframework.security:spring-security-test'
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
