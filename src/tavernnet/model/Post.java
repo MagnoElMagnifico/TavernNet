@@ -11,7 +11,7 @@ import tavernnet.utils.ValidObjectId;
 import java.time.LocalDateTime;
 
 @Document(collection = "posts")
-public class Post {
+public class Post implements Ownable {
     /** DTO para crear un post */
     public record PostRequest(
         @NotBlank(message = "Title must be not null or blank")
@@ -52,6 +52,11 @@ public class Post {
     public Post(@Valid Post.PostRequest post, @ValidObjectId ObjectId author) {
         // Dejar el ID a null hará que la base de datos asigne uno automáticamente
         this(null, author, post.title, post.content, LocalDateTime.now());
+    }
+
+    @Override
+    public String getOwnerId() {
+        return author.toHexString();
     }
 
     public void setId(@ValidObjectId ObjectId id) {

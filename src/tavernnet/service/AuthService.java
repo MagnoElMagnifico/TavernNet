@@ -1,5 +1,6 @@
 package tavernnet.service;
 
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import tavernnet.exception.InvalidRefreshTokenException;
+import tavernnet.model.Ownable;
 import tavernnet.model.Permission;
 import tavernnet.model.RefreshToken;
 import tavernnet.model.User;
@@ -37,6 +39,7 @@ public class AuthService {
     private final UserRepository userRepo;
     private final RefreshTokenRepository refreshRepo;
     private final RoleRepository roleRepo;
+    private final MongoTemplate mongo;
 
     /** Duracion del jwt (default: 15min) */
     @Value("${jwt.ttl:PT15M}")
@@ -47,12 +50,14 @@ public class AuthService {
 
     @Autowired
     public AuthService(
+        MongoTemplate mongo,
         AuthenticationManager authMng,
         KeyPair keyPair,
         UserRepository userRepo,
         RefreshTokenRepository refreshRepo,
         RoleRepository roleRepo
     ) {
+        this.mongo = mongo;
         this.authMng = authMng;
         this.keyPair = keyPair;
         this.userRepo = userRepo;
@@ -165,6 +170,17 @@ public class AuthService {
         });
 
         return builder.build();
+    }
+
+    // ==== VALIDACIÓN DE PERMISOS =============================================
+
+    public boolean isOwner(String collection, String id, Authentication auth) {
+        Ownable resource = mongo.findById(id, Ownable.class, collection);
+        if (resource == null) {
+            return false;
+        }
+
+        return resource.getOwnerId().equals(auth.getName());
     }
 
     // ==== GENERACIÓN DE TOKENS ===============================================

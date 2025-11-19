@@ -44,7 +44,7 @@ public record PostView (
     @Field("n_comments")
     @Min(value = 0, message = "Comments must be a positive number")
     int nComments
-) {
+) implements Ownable {
     /** DTO para devolver datos de un post */
     public record PostResponse(
         @ValidObjectId(message = "Invalid post id")
@@ -81,6 +81,11 @@ public record PostView (
                 post.nComments()
             );
         }
+    }
+
+    @Override
+    public String getOwnerId() {
+        return author.toHexString();
     }
 }
 

@@ -1,6 +1,5 @@
 package tavernnet.model;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -32,7 +31,7 @@ public record Comment(
 
     @NotNull(message = "Comment date must be not null")
     LocalDateTime date
-) {
+) implements Ownable {
     /** DTO para crear un comentario */
     public record CommentRequest(
         // NOTA: el post viene especificado en la URL
@@ -76,5 +75,10 @@ public record Comment(
         @Valid Comment.CommentRequest comment
     ) {
         this(null, comment.content, postId, characterId, LocalDateTime.now());
+    }
+
+    @Override
+    public String getOwnerId() {
+        return author.toHexString();
     }
 }
