@@ -1,9 +1,7 @@
 package tavernnet.controller;
 
-import com.github.fge.jsonpatch.JsonPatchException;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
-import org.bson.types.ObjectId;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -14,12 +12,9 @@ import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.User;
 import tavernnet.service.UserService;
-import com.github.fge.jsonpatch.JsonPatchOperation;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 
 @RestController
 @RequestMapping("users")
@@ -81,8 +76,8 @@ public class UserController {
     public ResponseEntity<@Valid User> updateBook(
         @PathVariable("userid") String userId,
         @RequestBody List<Map<String, Object>> changes
-    ) throws ResourceNotFoundException, JsonPatchException {
-        return ResponseEntity.ok(userService.updateUser(userId, changes));
+    ) throws ResourceNotFoundException {
+        return ResponseEntity.ok(user.updateUser(userId, changes));
     }
 
 }
