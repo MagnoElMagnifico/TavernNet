@@ -14,6 +14,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -67,12 +69,11 @@ public class UserService implements UserDetailsService {
             throw new DuplicatedResourceException(newUser, "User", newUser.username());
         }
 
-        Role userRole = null; // TODO: roles
-
         User user = new User(
             newUser.username(),
             passwordEncoder.encode(newUser.password()),
-            userRole
+            GlobalRole.USER,
+            LocalDateTime.now()
         );
 
         userbase.save(user);

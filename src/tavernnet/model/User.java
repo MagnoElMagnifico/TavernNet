@@ -8,12 +8,12 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 
 @Document(collection = "users")
 public class User implements UserDetails {
@@ -52,8 +52,8 @@ public class User implements UserDetails {
     ) {
         public PublicProfile(User user, Collection<Character> characters) {
             this(
-                user.getUsername(),
-                user.getCreation(),
+                user.username,
+                user.creation,
                 characters
             );
         }
@@ -71,14 +71,13 @@ public class User implements UserDetails {
     @NotBlank(message = "Password must be not null or blank")
     private final String passwordHash;
 
-    private final Collection<Role> roles;
-
+    private final GlobalRole role;
     private final LocalDateTime creation;
 
-    public User(String username, String passwordHash, Collection<Role> roles, LocalDateTime creation) {
+    public User(String username, String passwordHash, GlobalRole role, LocalDateTime creation) {
         this.username = username;
         this.passwordHash = passwordHash;
-        this.roles = roles;
+        this.role = role;
         this.creation = creation;
     }
 
@@ -97,39 +96,8 @@ public class User implements UserDetails {
     @Override
     @NonNull
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles
-            .stream()
-            .map(role -> new SimpleGrantedAuthority("ROLE_" + role.roleName()))
-            .toList();
+        return List.of(role);
     }
-
-    // TODO: sin esto, @PreAuthorize("hasAuthority('USER:READ')") no funciona
-    // porque ahora mismo solo se devuelven los roles, pero no los permisos de cada rol
-    /*
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        Set<GrantedAuthority> authorities = new HashSet<>();
-
-        for (Role role : roles) {
-            collectAuthorities(role, authorities);
-        }
-
-        return authorities;
-    }
-
-    private void collectAuthorities(Role role, Set<GrantedAuthority> authorities) {
-
-        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.roleName()));
-
-        for (Permission p : role.getPermissions()) {
-            authorities.add(new SimpleGrantedAuthority(p.resource() + ":" + p.action()));
-        }
-
-        for (Role included : role.getIncludes()) {
-            collectAuthorities(included, authorities);
-        }
-    }
-    */
 
     public LocalDateTime getCreation() {
         return creation;
