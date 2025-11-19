@@ -1,10 +1,8 @@
 package tavernnet.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatchException;
-import org.bson.types.ObjectId;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,28 +18,26 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-
 import tavernnet.exception.*;
 import tavernnet.model.*;
 import tavernnet.repository.*;
-import com.github.fge.jsonpatch.JsonPatch;
-import com.github.fge.jsonpatch.JsonPatchOperation;
-import tavernnet.utils.PatchUtils;
+import tavernnet.utils.patch.JsonPatch;
+import tavernnet.utils.patch.JsonPatchOperation;
 
 
 @Service
 public class UserService implements UserDetailsService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
-    private final PatchUtils patchutils;
     private final UserRepository userbase;
     private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper mapper;
 
     @Autowired
-    public UserService(UserRepository userbase, PasswordEncoder passwordEncoder, PatchUtils patchutils) {
+    public UserService(UserRepository userbase, PasswordEncoder passwordEncoder, ObjectMapper mapper) {
         this.userbase = userbase;
         this.passwordEncoder = passwordEncoder;
-            this.patchutils = patchutils;
+        this.mapper = mapper;
     }
 
     // TODO: paginacion
@@ -90,10 +86,11 @@ public class UserService implements UserDetailsService {
             .orElseThrow(() -> new ResourceNotFoundException("User", userId));
     }
 
-    public User updateUser(String userId, List<Map<String, Object>> changes)
+    public User updateUser(String userId, List<JsonPatchOperation> changes)
         throws ResourceNotFoundException, JsonPatchException {
         User user = userbase.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId));
-        User updated = patchutils.applyPatch(user, changes);
+        JsonNode updated_node = JsonPatch.apply(changes, mapper.convertValue(user, JsonNode.class));
+        User updated = mapper.convertValue(updated_node, User.class);
         return userbase.save(updated);
     }
 
