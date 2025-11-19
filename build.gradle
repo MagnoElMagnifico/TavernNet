@@ -40,7 +40,7 @@ sourceSets {
 }
 
 dependencies {
-    // Aplicaciones REST usando Spring MVC. Usa Tomcat embebido como servidor
+    // Aplicaciones REST usando Spring. Usa Tomcat embebido como servidor
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
     // Bases de datos: MongoDB y Redis
@@ -50,11 +50,13 @@ dependencies {
     // Anotaciones de validación de código
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+    // No se porque esto no aparece por defecto
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
 
     // Live reloading tras compilar
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    // developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 
     // Autenticacion y autorizacion
     implementation 'org.springframework.boot:spring-boot-starter-security'
