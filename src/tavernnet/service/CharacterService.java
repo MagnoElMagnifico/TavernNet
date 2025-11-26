@@ -20,6 +20,7 @@ import tavernnet.model.User;
 import tavernnet.repository.CharacterRepository;
 import tavernnet.utils.patch.JsonPatch;
 import tavernnet.utils.patch.JsonPatchOperation;
+import tavernnet.utils.patch.JsonPatchOperationType;
 import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 
 import java.time.LocalDateTime;
@@ -92,6 +93,14 @@ public class CharacterService {
         Character character = characterbase.getCharacterByName(username, characterName);
         if (character == null){
             throw new ResourceNotFoundException("Character", characterName);
+        }
+
+        for(JsonPatchOperation operation: changes){
+            if( (operation.operation() != JsonPatchOperationType.REPLACE)
+                || operation.path().toString().contains("/stats") )
+                throw new JsonPatchFailedException(
+                    "Operation %s on %s %s forbidden".formatted(
+                        operation.operation().toString(), "Character", characterName));
         }
 
         JsonNode updated_node = JsonPatch.apply(changes, mapper.convertValue(character, JsonNode.class));
