@@ -84,14 +84,23 @@ Mensajes:
 
 # Diseño de la API
 
-Usuarios y personajes:
+Usuarios y autenticacion:
+
+| Verbo    | URL                                 | Descripción                                    | Autenticacion |
+|----------|-------------------------------------|------------------------------------------------|---------------|
+| `GET`    | `/users?search=xxx&page=0&count=10` | Buscar por nombre de usuario                   | No            |
+| `POST`   | `/users`                            | Crear nuevo usuario                            | *No*          |
+| `GET`    | `/users/{userid}`                   | Consultar perfil de usuario                    | No            |
+| `DELETE` | `/users/{userid}`                   | Borrar usuario                                 | Si            |
+| `PATCH`  | `/users/{userid}`                   | Cambiar contraseña del usuario                 | Si            |
+| `POST`   | `/auth/login`                       | Iniciar sesion                                 | *No*          |
+| `POST`   | `/auth/logout`                      | Cierra sesion (ADMIN puede sobre otro usuario) | Si            |
+| `POST`   | `/auth/refresh`                     | Genera un nuevo token sin contraseña           | Si            |
+
+Personajes:
 
 | Verbo    | URL                                           | Descripción                    | Autenticacion |
 |----------|-----------------------------------------------|--------------------------------|---------------|
-| `POST`   | `/users`                                      | Crear nuevo usuario            | No            |
-| `GET`    | `/users/{userid}`                             | Consultar perfil de usuario    | No            |
-| `DELETE` | `/users/{userid}`                             | Borrar usuario                 | Si            |
-| `PATCH`  | `/users/{userid}`                             | Cambiar contraseña del usuario | Si            |
 | `POST`   | `/users/{userid}/characters`                  | Crear personaje                | Si            |
 | `GET`    | `/users/{userid}/characters/{character-name}` | Consultar stats de personaje   | No            |
 | `PATCH`  | `/users/{userid}/characters/{character-name}` | Editar stats de personaje      | Si            |
@@ -99,40 +108,32 @@ Usuarios y personajes:
 
 Creación de posts:
 
-| Verbo    | URL                        | Descripción                  | Autenticacion |
-|----------|----------------------------|------------------------------|---------------|
-| `GET`    | `/posts?for={characterid}` | Lista de últimos posts       | No            |
-| `POST`   | `/posts`                   | Crear un post                | Si            |
-| `GET`    | `/posts/{postid}`          | Consultar un post            | No            |
-| `DELETE` | `/posts/{postid}`          | Borrar un post               | Si            |
-| `POST`   | `/posts/{postid}/like`     | Dar un like a un post        | Si            |
-| `DELETE` | `/posts/{postid}/like`     | Quitar un like a un post     | Si            |
-| `GET`    | `/posts/{postid}/comments` | Obtener lista de comentarios | No            |
-| `POST`   | `/posts/{postid}/comments` | Enviar comentario a un post  | Si            |
+| Verbo    | URL                                        | Descripción                  | Autenticacion |
+|----------|--------------------------------------------|------------------------------|---------------|
+| `GET`    | `/posts?page=0&count=10`                   | Lista de últimos posts       | No            |
+| `POST`   | `/posts`                                   | Crear un post                | Si            |
+| `GET`    | `/posts/{postid}`                          | Consultar un post            | No            |
+| `DELETE` | `/posts/{postid}`                          | Borrar un post               | Si            |
+| `POST`   | `/posts/{postid}/like`                     | Dar un like a un post        | Si            |
+| `DELETE` | `/posts/{postid}/like`                     | Quitar un like a un post     | Si            |
+| `GET`    | `/posts/{postid}/comments?page=0&count=10` | Obtener lista de comentarios | No            |
+| `POST`   | `/posts/{postid}/comments`                 | Enviar comentario a un post  | Si            |
 
 Mensajes:
 
-| Verbo       | URL                                            | Descripción                                         | Autenticacion |
-|-------------|------------------------------------------------|-----------------------------------------------------|---------------|
-| `GET`       | `/messages?to={cid}`                           | Obtener chats del usuario `cid`                     | Si            |
-| `GET`       | `/messages?to={cid1}&from={cid2}&since={date}` | Obtener chat entre `cid1` (logeado) y `cid2`        | Si            |
-| `POST`      | `/messages`                                    | Enviar mensajes como `cid1` a `cid2` (en el cuerpo) | Si            |
-| `POST`      | `/groups`                                      | Crear nuevo grupo                                   | Si            |
-| `GET`       | `/groups?of={cid}`                             | Obtener grupos a los que pertenece `cid`            | Si            |
-| `GET`       | `/groups/{groupid}`                            | Obtener mensajes del grupo                          | Si            |
-| `POST`      | `/groups/{groupid}`                            | Enviar mensajes al grupo                            | Si            |
-| `PUT/PATCH` | `/groups/{groupid}`                            | Editar/administrar grupo                            | Si            |
-| `DELETE`    | `/groups/{groupid}`                            | Borrar grupo                                        | Si            |
+| Verbo    | URL                                         | Descripción                            | Autenticacion     |
+|----------|---------------------------------------------|----------------------------------------|-------------------|
+| `GET`    | `/parties?search=xxx&page=0&count=10`       | Buscar _parties_ existentes            | No                |
+| `POST`   | `/parties`                                  | Crear una nueva _party_                | Si                |
+| `GET`    | `/parties/{party-id}`                       | Obtener miembros de la _party_ y DM    | No                |
+| `POST`   | `/parties/{party-id}`                       | Añadir/quitar miembros de la _party_   | Si (DM)           |
+| `PATCH`  | `/parties/{party-id}`                       | Administrar _party_                    | Si (DM)           |
+| `DELETE` | `/parties/{party-id}`                       | Borrar _party_                         | Si (DM)           |
+| `DELETE` | `/parties/{party-id}?member={character-id}` | Borrar miembro de la _party_           | Si (DM)           |
+| `GET`    | `/parties/{party-id}/messages`              | Obtener ultimos mensajes de la _party_ | *Si* (Miembro/DM) |
+| `POST`   | `/parties/{party-id}/messages`              | Enviar mensajes                        | Si (Miembro/DM)   |
 
 NOTA: La notificación de nuevos mensajes requiere _pulling_.
-
-TODO:
-
-- Paginación de mensajes y comentarios
-- Editar, responder y borrar mensajes/comentarios
-- Tirar dados
-- Borrar y editar comentarios
-- Gremios y _parties_
 
 # Diseño de la base de datos
 
