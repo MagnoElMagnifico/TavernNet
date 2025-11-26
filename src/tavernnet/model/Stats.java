@@ -1,55 +1,53 @@
 package tavernnet.model;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Map;
 
 public class Stats {
-    private HashMap<String, Integer> main;
-    private HashMap<String, Integer> modifiers;
-    private HashMap<String, Integer> passive;
-    private HashMap<String, Integer> combat;
+    private Map<String, Integer> main;
+    private Map<String, Integer> modifiers;
+    private Map<String, Integer> passive;
+    private Map<String, Integer> combat;
 
     public Stats(){}
 
-    public Stats(HashMap<String, Integer> main, HashMap<String,
-                Integer> modifiers, HashMap<String, Integer> passive,
-                 HashMap<String, Integer> combat) {
+    public Stats(Map<String, Integer> main, Map<String,
+                Integer> modifiers, Map<String, Integer> passive,
+                 Map<String, Integer> combat) {
         this.main = main;
         this.modifiers = modifiers;
         this.passive = passive;
         this.combat = combat;
     }
 
-    public HashMap<String, Integer> getMain() {
+    public Map<String, Integer> getMain() {
         return main;
     }
 
-    public void setMain(HashMap<String, Integer> main) {
+    public void setMain(Map<String, Integer> main) {
         this.main = main;
     }
 
-    public HashMap<String, Integer> getModifiers() {
+    public Map<String, Integer> getModifiers() {
         return modifiers;
     }
 
-    public void setModifiers(HashMap<String, Integer> modifiers) {
+    public void setModifiers(Map<String, Integer> modifiers) {
         this.modifiers = modifiers;
     }
 
-    public HashMap<String, Integer> getPassive() {
+    public Map<String, Integer> getPassive() {
         return passive;
     }
 
-    public void setPassive(HashMap<String, Integer> passive) {
+    public void setPassive(Map<String, Integer> passive) {
         this.passive = passive;
     }
 
-    public HashMap<String, Integer> getCombat() {
+    public Map<String, Integer> getCombat() {
         return combat;
     }
 
-    public void setCombat(HashMap<String, Integer> combat) {
+    public void setCombat(Map<String, Integer> combat) {
         this.combat = combat;
     }
-
 }
