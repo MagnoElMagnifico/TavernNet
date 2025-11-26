@@ -1,5 +1,6 @@
 package tavernnet.service;
 
+import tavernnet.utils.patch.JsonPatchOperationType;
 import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -87,6 +88,14 @@ public class UserService implements UserDetailsService {
 
     public User updateUser(String userId, List<JsonPatchOperation> changes)
         throws ResourceNotFoundException, JsonPatchFailedException {
+        for(JsonPatchOperation operation: changes){
+            if( (operation.operation() != JsonPatchOperationType.REPLACE)
+                || operation.path().toString().equals("/password") )
+                throw new JsonPatchFailedException(
+                    "Operation %s on %s %s forbidden".formatted(
+                        operation.operation().toString(), "User", userId));
+        }
+
         User user = userbase.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId));
         JsonNode updated_node = JsonPatch.apply(changes, mapper.convertValue(user, JsonNode.class));
         User updated = mapper.convertValue(updated_node, User.class);

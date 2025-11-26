@@ -1,5 +1,7 @@
 package tavernnet.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,7 +16,11 @@ import java.util.List;
 import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Character;
+import tavernnet.model.User;
 import tavernnet.repository.CharacterRepository;
+import tavernnet.utils.patch.JsonPatch;
+import tavernnet.utils.patch.JsonPatchOperation;
+import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 
 import java.time.LocalDateTime;
 
@@ -23,10 +29,12 @@ public class CharacterService {
 
     private static final Logger log = LoggerFactory.getLogger(CharacterService.class);
     private final CharacterRepository characterbase;
+    private final ObjectMapper mapper;
 
     @Autowired
-    public CharacterService(CharacterRepository characterbase) {
+    public CharacterService(CharacterRepository characterbase, ObjectMapper mapper) {
         this.characterbase = characterbase;
+        this.mapper = mapper;
     }
 
     /**
@@ -77,6 +85,18 @@ public class CharacterService {
         realCharacter = characterbase.save(realCharacter);
         log.info("Created character with id '{}'", realCharacter.getClass());
         return realCharacter.getId().toHexString();
+    }
+
+    public Character updateCharacter(@NotBlank String username, @NotBlank String characterName, List<JsonPatchOperation> changes)
+        throws ResourceNotFoundException, JsonPatchFailedException {
+        Character character = characterbase.getCharacterByName(username, characterName);
+        if (character == null){
+            throw new ResourceNotFoundException("Character", characterName);
+        }
+
+        JsonNode updated_node = JsonPatch.apply(changes, mapper.convertValue(character, JsonNode.class));
+        Character updated = mapper.convertValue(updated_node, Character.class);
+        return characterbase.save(updated);
     }
 
     public void deleteCharacter(@NotBlank String username, @NotBlank String characterName) throws ResourceNotFoundException {
