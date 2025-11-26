@@ -2,7 +2,7 @@ package tavernnet.controller;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("users")
+@NullMarked
 public class UserController {
     private final UserService user;
 
@@ -31,7 +32,7 @@ public class UserController {
 
     // Servicio para obtener todos los usuarios
     @GetMapping()
-    public @NonNull Collection<User.@Valid PublicProfile> getUsers() {
+    public Collection<User.@Valid PublicProfile> getUsers() {
         return user.getUsers();
     }
 

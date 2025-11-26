@@ -1,8 +1,10 @@
 package tavernnet.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -29,13 +31,29 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.authorizeHttpRequests(authorize -> authorize
-                // Se deben autenticar todas las peticiones.
-                // Si no llevan el jwt, el filtro autenticará y se rechazará desde los controladores
+                // Necesarias para poder autenticarse y crear usuarios
+                .requestMatchers(HttpMethod.POST, "/users").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+
+                //
+                .requestMatchers(HttpMethod.POST, "/parties/**").authenticated()
+
+                // En general, las operaciones de lectura estan permitidas
+                .requestMatchers(HttpMethod.GET, "/**").permitAll()
+
+                // El resto, todas deben llevar un JWT, o bien recibira un 401
                 .anyRequest().authenticated()
             )
             .csrf(AbstractHttpConfigurer::disable)
-            .addFilterAfter(jwtFilter, BasicAuthenticationFilter.class)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Ejecutar nuestro filtro antes del de spring: si existe la cabecera, se pillara aqui
+            .addFilterBefore(jwtFilter, BasicAuthenticationFilter.class)
+            // Si el filtro lanza una excepcion, significa que el token no es valido: no esta autenticado
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                })
+            )
             .build();
     }
 

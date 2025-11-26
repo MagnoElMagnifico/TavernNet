@@ -10,4 +10,3 @@ docker compose up -d
 
 # Ejecutar la aplicación con livereloading
 ./gradlew --no-daemon bootRun
-
