@@ -76,7 +76,7 @@ public class UserController {
     }
 
     @PatchMapping("{userid}")
-    public ResponseEntity<@Valid User> updateBook(
+    public ResponseEntity<@Valid User> updateUser(
         @PathVariable("userid") String userId,
         @RequestBody List<JsonPatchOperation> changes
     ) throws ResourceNotFoundException, JsonPatchFailedException {

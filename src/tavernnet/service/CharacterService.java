@@ -100,15 +100,18 @@ public class CharacterService {
                 || operation.path().toString().contains("/stats") )
                 throw new JsonPatchFailedException(
                     "Operation %s on %s %s forbidden".formatted(
-                        operation.operation().toString(), "Character", characterName));
+                        operation.operation().toString(),
+                        "Character", characterName));
         }
 
-        JsonNode updated_node = JsonPatch.apply(changes, mapper.convertValue(character, JsonNode.class));
+        JsonNode updated_node = JsonPatch.apply(changes, mapper.convertValue(
+            character, JsonNode.class));
         Character updated = mapper.convertValue(updated_node, Character.class);
         return characterbase.save(updated);
     }
 
-    public void deleteCharacter(@NotBlank String username, @NotBlank String characterName) throws ResourceNotFoundException {
+    public void deleteCharacter(@NotBlank String username, @NotBlank String characterName)
+        throws ResourceNotFoundException {
         Character  deletedCharacter = characterbase.getCharacterByName(username, characterName);
         if (deletedCharacter == null) {
             throw new ResourceNotFoundException("Character", characterName);
