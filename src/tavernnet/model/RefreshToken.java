@@ -6,7 +6,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.TimeToLive;
 
-@RedisHash
+@RedisHash("refresh_token")
 public record RefreshToken(
     @Id
     @NotBlank(message = "RefreshToken value must be not null or blank")

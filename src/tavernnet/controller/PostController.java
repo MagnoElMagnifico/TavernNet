@@ -33,7 +33,7 @@ public class PostController {
     // TODO: parámetros para personalizar el algoritmo
     // TODO: paginación
     @GetMapping
-    public Collection<PostView.@Valid PostResponse> getPosts() {
+    public Collection<PostView.PostResponse> getPosts() {
         return posts.getPosts();
     }
 
@@ -70,7 +70,7 @@ public class PostController {
      * found</code> si no existe el ID proporcionado.
      */
     @GetMapping("{postid}")
-    public @Valid PostView.PostResponse getPost(
+    public PostView.PostResponse getPost(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid postId to retrieve")
         ObjectId postId

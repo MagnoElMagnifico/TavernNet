@@ -1,5 +1,7 @@
 package tavernnet.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
@@ -34,6 +36,9 @@ import java.util.UUID;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
     private final AuthenticationManager authMng;
     private final KeyPair keyPair;
     private final UserRepository userRepo;
@@ -97,7 +102,7 @@ public class AuthService {
     public LoginResponse refresh(String refreshToken) throws InvalidRefreshTokenException {
         // Buscar en redis el username al que corresponde este jwt
         var token = refreshRepo
-            .findByToken(refreshToken)
+            .findById(refreshToken)
             .orElseThrow(() -> new InvalidRefreshTokenException(refreshToken));
 
         // Buscar ahora el usuario completo
@@ -105,9 +110,24 @@ public class AuthService {
             .findByUsername(token.user())
             .orElseThrow(() -> new UsernameNotFoundException(token.user()));
 
-        // Autenticar al usuario, generar nuevo JWT, y de paso, regenerar
-        // el RefreshToken
-        return login(new User.LoginRequest(user));
+        // Autenticar al usuario
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+            user.getUsername(),
+            null,
+            user.getAuthorities()
+        );
+
+        // Generar JWT y RefreshToken
+        String newJwt = generateJwt(auth);
+        RefreshToken newRefreshToken = generateRefreshToken(auth);
+
+        // Borrar la entrada anterior
+        refreshRepo.deleteById(refreshToken);
+
+        return new LoginResponse(
+            new User.LoginResponse(newJwt, jwtTtl),
+            newRefreshToken
+        );
     }
 
     public void logout(String jwt) {
@@ -144,6 +164,7 @@ public class AuthService {
         return UsernamePasswordAuthenticationToken.authenticated(username, jwt, user.getAuthorities());
     }
 
+    // TODO: esto no
     public RoleHierarchy loadRoleHierarchy() {
         RoleHierarchyImpl.Builder builder = RoleHierarchyImpl.withRolePrefix("");
 

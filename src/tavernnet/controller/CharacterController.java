@@ -84,7 +84,7 @@ public class CharacterController {
      * @return Personaje solicitado
      */
     @GetMapping("{userid}/characters/{characterName}")
-    public @Valid Character getCharacter(
+    public Character getCharacter(
         @PathVariable("userid") @NotBlank String userId,
         @PathVariable("characterName") @NotBlank String characterName
     ) throws ResourceNotFoundException {

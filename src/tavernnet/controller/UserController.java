@@ -32,13 +32,13 @@ public class UserController {
 
     // Servicio para obtener todos los usuarios
     @GetMapping()
-    public Collection<User.@Valid PublicProfile> getUsers() {
+    public Collection<User.PublicProfile> getUsers() {
         return user.getUsers();
     }
 
     // Servicio para obtener un usuario por ID
     @GetMapping("{userid}")
-    public @Valid User.PublicProfile getUser(
+    public User.PublicProfile getUser(
         @PathVariable("userid") @NotBlank String id
     ) throws ResourceNotFoundException {
         return user.getUser(id);
@@ -77,11 +77,10 @@ public class UserController {
     }
 
     @PatchMapping("{userid}")
-    public ResponseEntity<@Valid User> updateUser(
+    public ResponseEntity<User> updateUser(
         @PathVariable("userid") String userId,
         @RequestBody List<JsonPatchOperation> changes
     ) throws ResourceNotFoundException, JsonPatchFailedException {
         return ResponseEntity.ok(user.updateUser(userId, changes));
     }
-
 }

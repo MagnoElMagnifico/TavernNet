@@ -29,13 +29,14 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         return http.authorizeHttpRequests(authorize -> authorize
-                // Necesarias para poder autenticarse y crear usuarios
+                // Necesarias para poder autenticarse, refrescar el token y crear usuarios
                 .requestMatchers(HttpMethod.POST, "/users").permitAll()
                 .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll()
 
-                //
+                // Las parties son todas privadas
                 .requestMatchers(HttpMethod.POST, "/parties/**").authenticated()
 
                 // En general, las operaciones de lectura estan permitidas

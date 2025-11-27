@@ -58,7 +58,7 @@ public class AuthController {
     @PreAuthorize("isAnonymous()")
     @PostMapping("login")
     @NullMarked
-    public ResponseEntity<User.@Valid LoginResponse> login(
+    public ResponseEntity<User.LoginResponse> login(
         @RequestBody @Valid User.LoginRequest user
     ) throws AuthenticationException {
         // Autenticar al usuario creando un objeto Authentication, además de
@@ -77,10 +77,10 @@ public class AuthController {
 
     /** Regenerar un JWT a partir de un <code>RefreshToken</code> */
     @PostMapping("refresh")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAnonymous()")
     @NullMarked
-    public ResponseEntity<User.@Valid LoginResponse> refresh(
-        @RequestHeader(name=REFRESH_TOKEN_COOKIE_NAME) String refreshToken
+    public ResponseEntity<User.LoginResponse> refresh(
+        @CookieValue(name=REFRESH_TOKEN_COOKIE_NAME) String refreshToken
     ) throws InvalidRefreshTokenException {
         // Igual que antes, pero ahora se hace a partir del refresh token
         var response = auth.refresh(refreshToken);
