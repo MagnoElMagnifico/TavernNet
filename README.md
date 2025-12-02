@@ -1,14 +1,7 @@
 TavernNet es una red social temática inspirada en _Dungeons & Dragons_ (DnD).
 En ella, los perfiles de los usuarios se representan como fichas de personaje,
-con atributos, clases y estadísticas. Los usuarios podrán:
-
-- Crear y gestionar varios personajes.
-- Crear publicaciones de texto o imagen en un feed público. Otros usuarios
-  podrán dejar comentarios e impresiones.
-- Seguir a otros usuarios y formar grupos de aventuras o unirse a gremios.
-- Enviar mensajes directos a otros usuarios o grupos de chat (mesas virtuales)
-  donde los usuarios podrán jugar a las campañas. Por tanto, podrán tirar dados
-  en función de sus estadísticas de personaje.
+con atributos, clases y estadísticas. La aplicación tendrá un sistema de _posts_
+(publicaciones) y de _parties_ (grupos de chat).
 
 > [!NOTE]
 > No pretendemos implementar todas estas funcionalidades, solo aquellas partes
@@ -46,14 +39,12 @@ luego configura las contraseñas como variables del entorno en un archivo `.env`
 Luego, para ejecutar una versión de desarrollo (con _live-reloading_) ejecuta el
 script `./rundev.sh` y usa `./gradlew build` para recompilar.
 
-Luego, para subir algunos datos de prueba a la base de datos:
+Para la versión de producción, usa el `.jar` generado con el comando (configura
+también las variables del entorno):
 
 ```bash
-docker cp db_script.js tavernnet-database-1:/tmp
-docker exec tavernnet-database-1 mongosh /tmp/db_script.js
+./gradlew bootJar
 ```
-
-Para la versión de producción, usa el `.jar` generado.
 
 # Características
 
@@ -63,48 +54,98 @@ Para la versión de producción, usa el `.jar` generado.
 Publicaciones:
 
 - [ ] Texto e imágenes
-- [ ] Comentarios
+- [ ] Comentarios y likes
 - [ ] Generar _feed_ para el usuario
 
-Interacciones:
+_Parties_:
 
-- [ ] Amistades entre usuarios
-- [ ] Unirse a gremios
-- [ ] Creación de _parties_
-
-Mensajes:
-
-- [ ] Mensajes directos entre personajes
-- [ ] Creación de grupos de chat
+- [ ] Grupos de mensajes entre personajes
+- [ ] Administración por un usuario DM
 - [ ] Mecánica para tirar dados con las _stats_ del personaje
-- [ ] Encuentros/combates en el chat (tomar turnos por orden de iniciativa;
-    movimiento dentro de un mapa, acción y _bonus action_)
-
-<!-- TODO: Cómo integrar el Dungeon Master? -->
 
 # Diseño de la API
 
 Usuarios y autenticacion:
 
-| Verbo    | URL                                 | Descripción                                    | Autenticacion |
-|----------|-------------------------------------|------------------------------------------------|---------------|
-| `GET`    | `/users?search=xxx&page=0&count=10` | Buscar por nombre de usuario                   | No            |
-| `POST`   | `/users`                            | Crear nuevo usuario                            | *No*          |
-| `GET`    | `/users/{userid}`                   | Consultar perfil de usuario                    | No            |
-| `DELETE` | `/users/{userid}`                   | Borrar usuario                                 | Si            |
-| `PATCH`  | `/users/{userid}`                   | Cambiar contraseña del usuario                 | Si            |
-| `POST`   | `/auth/login`                       | Iniciar sesion                                 | *No*          |
-| `POST`   | `/auth/logout`                      | Cierra sesion (ADMIN puede sobre otro usuario) | Si            |
-| `POST`   | `/auth/refresh`                     | Genera un nuevo token sin contraseña           | Si            |
+| Verbo    | URL                                           | Descripción                                    | Autenticacion |
+|----------|-----------------------------------------------|------------------------------------------------|---------------|
+| `GET`    | `/users?search=xxx&page=0&count=10`           | Buscar por nombre de usuario                   | No            |
+| `POST`   | `/users`                                      | Crear nuevo usuario                            | *No*          |
+| `GET`    | `/users/{userid}`                             | Consultar perfil de usuario                    | No            |
+| `DELETE` | `/users/{userid}`                             | Borrar usuario                                 | Si            |
+| `POST`   | `/users/{userid}/password`                    | Cambiar contraseña del usuario                 | Si            |
+| `POST`   | `/users/{userid}/characters`                  | Crear personaje                                | Si            |
+| `GET`    | `/users/{userid}/characters/{character-name}` | Consultar stats de personaje                   | No            |
+| `PATCH`  | `/users/{userid}/characters/{character-name}` | Editar stats de personaje                      | Si            |
+| `DELETE` | `/users/{userid}/characters/{character-name}` | Borrar el personaje                            | Si            |
+| `POST`   | `/auth/login`                                 | Iniciar sesion como usuario                    | *No*          |
+| `POST`   | `/auth/character-login`                       | Iniciar sesion como un personaje               | Si            |
+| `POST`   | `/auth/logout`                                | Cierra sesion (ADMIN puede sobre otro usuario) | Si            |
+| `POST`   | `/auth/refresh`                               | Genera un nuevo token sin contraseña           | Si            |
 
-Personajes:
+2 roles:
 
-| Verbo    | URL                                           | Descripción                    | Autenticacion |
-|----------|-----------------------------------------------|--------------------------------|---------------|
-| `POST`   | `/users/{userid}/characters`                  | Crear personaje                | Si            |
-| `GET`    | `/users/{userid}/characters/{character-name}` | Consultar stats de personaje   | No            |
-| `PATCH`  | `/users/{userid}/characters/{character-name}` | Editar stats de personaje      | Si            |
-| `DELETE` | `/users/{userid}/characters/{character-name}` | Borrar el personaje            | Si            |
+-   `ADMIN`: tiene todos los permisos, puede ejecutar todos los _endpoints_.
+-   `USER`: se asigna por defecto a todos los usuarios creados. Solo tiene
+    permisos sobre los recursos sobre los que es dueño.
+
+Este `USER`, directamente solo podrá:
+
+-   Crear, modificar y borrar personajes.
+-   Cerrar sesión y refrescar sus tokens.
+-   Cambiar su contraseña.
+-   Cambiar de personaje
+-   En caso de ser el DM de una _party_, podrá administrar el grupo y enviar
+    mensajes.
+
+El resto de operaciones presentadas a continuación (personajes, _posts_,
+mensajes), se tendrán que realizar a través de un personaje. Entonces, el dueño
+de estos recursos realmente no es el usuario en sí, sino el personaje.
+
+Contenido del JWT:
+
+- `sub` (`.subject()`): sujeto principal
+- `exp` (`.expiration()`): fecha de caducidad
+- `nbf` (`.notBefore()`): no se puede usar antes de esta fecha
+- `iat` (`.issuedAt()`): fecha de emisión
+
+- `role`: `USER` o `ADMIN`
+- `act_ch`: identificador del personaje activo. Puede ser `null`
+
+El _RefreshToken_ será un UUID que se enviará en una cookie segura llamada
+`__Secure-RefreshToken` solo para la _path_ `/auth/refresh`, y se rotará en cada
+_refresh_. Nótese también que al borrar un usuario o cambiar la contraseña
+invalida sus _RefreshTokens_.
+
+
+Luego, para ser 100% RESTful, los _endpoints_ de inicio de sesión no deberían
+ser los que se han seleccionado:
+
+-   `/auth/login` debería ser `POST /auth/user-sessions`
+-   `/auth/refresh` debería ser `POST /auth/user-sessions` y que de alguna forma
+    invalide el anterior.
+-   `/auth/logout` debería ser `DELETE /auth/user-sessions/{session-id}`
+
+Pero, hemos decidido no hacerlo por los siguientes motivos:
+
+-   Las sesiones JWT con son recursos como tal.
+-   Puede ser confuso, ya que es menos intuitivo y el resto de APIs no lo hacen
+    de esta forma.
+-   No aporta ningún beneficio adicional, de hecho, solo complica la
+    implementación por tener que añadir identificadores a las sesiones.
+
+Otras decisiones de diseño / implementación:
+
+-   Se usa `POST` en lugar de `PUT` para el cambio de contraseña porque no es
+    idempotente, es decir, no se puede repetir la petición de forma segura: si
+    la primera cambia la contraseña, la siguiente petición usará una contraseña
+    desactualizada.
+-   El cambio de contraseña, aunque es una operación sobre `/users`, se
+    implementa en `AuthService` porque se trata de una operación de seguridad y
+    necesita acceso al repositorio de los _RefreshTokens_.
+-   `DatabaseInicializer` crea unas entradas en la BD si no existen, incluyendo
+    los índices necesarios. Esto hace que se marquen con el nombre de la clase
+    apropiada, en lugar de crearlos manualmente.
 
 Creación de posts:
 
@@ -133,12 +174,13 @@ Mensajes:
 | `GET`    | `/parties/{party-id}/messages`              | Obtener ultimos mensajes de la _party_ | *Si* (Miembro/DM) |
 | `POST`   | `/parties/{party-id}/messages`              | Enviar mensajes                        | Si (Miembro/DM)   |
 
-NOTA: La notificación de nuevos mensajes requiere _pulling_.
+NOTA: La notificación de nuevos mensajes requiere _pulling_. Una mejor
+estrategia sería usar _WebSockets_, pero eso está fuera del alcance.
 
-# Diseño de la base de datos
+# Diseño del modelo de datos
 
-<!-- https://www.w3schools.com/mongodb/mongodb_schema_validation.php -->
-<!-- https://json-schema.org/learn/miscellaneous-examples -->
+Se puede consultar el modelo actualizado en el archivo [model.mdj](./model.mdj)
+usando StarUML. La siguiente captura de pantalla puede que esté desactualizada.
 
 ![](TavernNet.png)
 
