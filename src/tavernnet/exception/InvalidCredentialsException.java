@@ -1,16 +1,35 @@
 package tavernnet.exception;
 
-import javax.naming.AuthenticationException;
+public class InvalidCredentialsException extends Exception {
+    public enum CredentialType {
+        REFRESH_TOKEN,
+        PASSWORD,
+        JWT;
 
-public class InvalidRefreshTokenException extends AuthenticationException {
+        @Override
+        public String toString() {
+            return switch (this) {
+                case REFRESH_TOKEN -> "Refresh Token";
+                case PASSWORD -> "Password";
+                case JWT -> "JWT";
+            };
+        }
+    }
+
+    private final CredentialType type;
     private final String token;
 
-    public InvalidRefreshTokenException(String token) {
-        super("Invalid refresh jwt: \"%s\"".formatted(token));
+    public InvalidCredentialsException(CredentialType type, String token) {
+        super("Invalid %s: \"%s\"".formatted(type.toString(), token));
         this.token = token;
+        this.type = type;
     }
 
     public String getToken() {
         return token;
+    }
+
+    public CredentialType getType() {
+        return type;
     }
 }

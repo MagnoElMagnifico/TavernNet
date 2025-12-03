@@ -1,9 +1,5 @@
 package tavernnet.service;
 
-import tavernnet.utils.patch.JsonPatchOperationType;
-import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,99 +12,100 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.List;
 
 import tavernnet.exception.*;
 import tavernnet.model.*;
+import tavernnet.model.Character;
 import tavernnet.repository.*;
-import tavernnet.utils.patch.JsonPatch;
-import tavernnet.utils.patch.JsonPatchOperation;
-
 
 @Service
+@NullMarked
 public class UserService implements UserDetailsService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
-    private final UserRepository userbase;
+
+    private final UserRepository userRepo;
+    private final CharacterRepository charRepo;
+    private final RefreshTokenRepository tokenRepo;
     private final PasswordEncoder passwordEncoder;
-    private final ObjectMapper mapper;
 
     @Autowired
-    public UserService(UserRepository userbase, PasswordEncoder passwordEncoder, ObjectMapper mapper) {
-        this.userbase = userbase;
+    public UserService(
+        UserRepository userRepo,
+        CharacterRepository charRepo,
+        RefreshTokenRepository tokenRepo,
+        PasswordEncoder passwordEncoder
+    ) {
+        this.userRepo = userRepo;
+        this.charRepo = charRepo;
+        this.tokenRepo = tokenRepo;
         this.passwordEncoder = passwordEncoder;
-        this.mapper = mapper;
     }
 
-    // TODO: paginacion
-    // TODO: quiza esto no tiene demasiado sentido, mejor filtrar por nombre de usuario
-    public Collection<User.PublicProfile> getUsers() {
-        return userbase
+    // TODO: paginación
+    // TODO: quizá esto no tiene demasiado sentido, mejor filtrar por nombre de usuario
+    public Collection<String> getUsers() {
+        log.debug("GET /users search:??? page:??? count:???");
+        return userRepo
             .findAll()
-            .stream().
-            map(u -> new User.PublicProfile(u, null))
+            .stream()
+            .map(User::getUsername)
             .toList();
     }
 
-    public User.PublicProfile getUser(String id) throws ResourceNotFoundException {
-        User user = userbase
-            .findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("User", id));
-        // TODO: obtener personajes del usuario
-        return new User.PublicProfile(user, null);
+    public User.PublicProfile getUser(String username) throws ResourceNotFoundException {
+        User user = userRepo
+            .findById(username)
+            .orElseThrow(() -> new ResourceNotFoundException("User", username));
+
+        // Obtener los personajes de este usuario
+        Collection<Character> characters = charRepo.getCharactersByUser(username);
+        log.debug("GET /users/{} with {} characters", username, characters.size());
+
+        return new User.PublicProfile(user, characters);
     }
 
     public void createUser(
         User.LoginRequest newUser
     ) throws DuplicatedResourceException {
-        if (userbase.existsById(newUser.username())) {
+        if (userRepo.existsById(newUser.username())) {
             throw new DuplicatedResourceException(newUser, "User", newUser.username());
         }
 
         User user = new User(
             newUser.username(),
-            passwordEncoder.encode(newUser.password()),
+            newUser.password(),
+            passwordEncoder,
             GlobalRole.USER,
             LocalDateTime.now()
         );
 
-        userbase.save(user);
-        log.info("Created user with id '{}'", newUser.username());
+        userRepo.save(user);
+        log.debug("POST /users new user=\"{}\"", newUser.username());
     }
 
     /**
-     * @param userId Identificador del post a borrar
+     * @param username Identificador del post a borrar
      * @throws ResourceNotFoundException Si el ID no existe
      */
-    public void deleteUser(String userId) throws ResourceNotFoundException {
-        userbase
-            .deleteUserById(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("User", userId));
-    }
+    public void deleteUser(String username) throws ResourceNotFoundException {
+        userRepo
+            .deleteUserById(username)
+            .orElseThrow(() -> new ResourceNotFoundException("User", username));
+        log.debug("DELETE /users/{} deleted user", username);
 
-    public User updateUser(String userId, List<JsonPatchOperation> changes)
-        throws ResourceNotFoundException, JsonPatchFailedException {
-        for(JsonPatchOperation operation: changes){
-            if( (operation.operation() != JsonPatchOperationType.REPLACE)
-                || operation.path().toString().equals("/password") )
-                throw new JsonPatchFailedException(
-                    "Operation %s on %s %s forbidden".formatted(
-                        operation.operation().toString(), "User", userId));
-        }
-
-        User user = userbase.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId));
-        JsonNode updated_node = JsonPatch.apply(changes, mapper.convertValue(user, JsonNode.class));
-        User updated = mapper.convertValue(updated_node, User.class);
-        return userbase.save(updated);
+        // También borrar la sesión del usuario para que no queden sesiones "zombie"
+        tokenRepo.deleteAllByUser(username);
+        log.debug("DELETE /users/{} deleted user's refresh tokens", username);
     }
 
     // Necesario para que Spring sepa como obtener usuarios de la BD
     @Override
-    @NullMarked
     public UserDetails loadUserByUsername(
         String username
     ) throws UsernameNotFoundException {
-        return userbase
+        log.debug("Load user=\"{}\"", username);
+        return userRepo
             .findByUsername(username)
             .orElseThrow(() -> new UsernameNotFoundException(username));
     }

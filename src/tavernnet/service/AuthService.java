@@ -1,10 +1,14 @@
 package tavernnet.service;
 
+import org.bson.types.ObjectId;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
-import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Claims;
@@ -15,37 +19,38 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import tavernnet.exception.InvalidRefreshTokenException;
-import tavernnet.model.Ownable;
-import tavernnet.model.Permission;
-import tavernnet.model.RefreshToken;
-import tavernnet.model.User;
+import tavernnet.exception.InvalidCredentialsException;
+import tavernnet.exception.ResourceNotFoundException;
+import tavernnet.model.*;
+import tavernnet.repository.CharacterRepository;
 import tavernnet.repository.RefreshTokenRepository;
-import tavernnet.repository.RoleRepository;
 import tavernnet.repository.UserRepository;
 
 import java.security.KeyPair;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 
-@Service
+@NullMarked
+@Service("auth")
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+    private static final String AUTH_TYPE = "Bearer";
+    private static final String JWT_ROLE = "role";
+    private static final String JWT_ACTIVE_CHARACTER = "act_ch";
 
     private final AuthenticationManager authMng;
     private final KeyPair keyPair;
+    private final PasswordEncoder passwordEncoder;
+
     private final UserRepository userRepo;
     private final RefreshTokenRepository refreshRepo;
-    private final RoleRepository roleRepo;
     private final MongoTemplate mongo;
+    private final CharacterRepository charRepo;
 
+    // NOTA: estos no pueden ser null por el valor por defecto dado
     /** Duracion del jwt (default: 15min) */
     @Value("${jwt.ttl:PT15M}")
     private Duration jwtTtl;
@@ -55,20 +60,26 @@ public class AuthService {
 
     @Autowired
     public AuthService(
-        MongoTemplate mongo,
         AuthenticationManager authMng,
         KeyPair keyPair,
-        UserRepository userRepo,
+        PasswordEncoder passwordEncoder,
+
         RefreshTokenRepository refreshRepo,
-        RoleRepository roleRepo
+        UserRepository userRepo,
+        MongoTemplate mongo,
+        CharacterRepository charRepo
     ) {
-        this.mongo = mongo;
         this.authMng = authMng;
         this.keyPair = keyPair;
-        this.userRepo = userRepo;
+        this.passwordEncoder = passwordEncoder;
+
         this.refreshRepo = refreshRepo;
-        this.roleRepo = roleRepo;
+        this.userRepo = userRepo;
+        this.mongo = mongo;
+        this.charRepo = charRepo;
     }
+
+    // ==== TIPOS DE DATOS NECESARIOS ==========================================
 
     // La respuesta HTTP al usuario tendrá solo el JWT, pero también hay que
     // devolver al controlador el valor del refresh jwt para que configure la
@@ -78,165 +89,202 @@ public class AuthService {
         RefreshToken refreshToken
     ) {}
 
+    // ==== RESPUESTAS A LOS ENDPOINTS =========================================
+
     /** Autentica un usuario a partir de sus credenciales */
-    public LoginResponse login(User.LoginRequest user) {
+    public LoginResponse login(User.LoginRequest login) throws ResourceNotFoundException {
         // Autenticar al usuario
+        // Primero se crea un objeto Authentication con la propiedad
+        // authentication=false, hace que `isAuthenticated()` devuelva false.
+        // Luego se le pasa al AuthenticationManager.
+        // El manager irá a la BD con el metodo UserService.loadUserByUsername()
+        // Comprueba su contraseña usando el PasswordManager
+        // Crea un objeto Authentication y lo devuelve
+        // (hace otras tareas a mayores y por eso se usa esta función)
         Authentication auth = authMng.authenticate(
             UsernamePasswordAuthenticationToken.unauthenticated(
-                user.username(),
-                user.password()
+                login.username(),
+                login.password()
             )
         );
+        log.debug("POST /auth/login successful for user=\"{}\"", login.username());
+
+        // Como se está leyendo a traves de un UserService, el principal de este
+        // objeto Authentication será un User (solo en este caso)
+        User user = (User) auth.getPrincipal();
+
+        // Esto no debería pasar nunca, pero por si acaso
+        if (user == null) {
+            throw new BadCredentialsException("unreachable error");
+        }
+
+        if (
+            login.activeCharacter() != null
+            && !charRepo.existsById(new ObjectId(login.activeCharacter()))
+        ) {
+            throw new ResourceNotFoundException("Character", login.activeCharacter());
+        }
 
         // Generar JWT y RefreshToken
-        String token = generateJwt(auth);
-        RefreshToken refreshToken = generateRefreshToken(auth);
+        String jwt = generateJwt(login.username(), user.getRole(), login.activeCharacter());
+        RefreshToken refreshToken = generateRefreshToken(login.username(), user.getRole());
+
+        log.debug("POST /auth/login created tokens JWT={} Refresh={}", jwt, refreshToken.uuid());
 
         return new LoginResponse(
-            new User.LoginResponse(token, jwtTtl),
+            new User.LoginResponse(jwt, AUTH_TYPE, jwtTtl),
             refreshToken
         );
     }
 
     /** Vuelve a autenticar un usuario a partir de su refresh token */
-    public LoginResponse refresh(String refreshToken) throws InvalidRefreshTokenException {
-        // Buscar en redis el username al que corresponde este jwt
-        var token = refreshRepo
+    public LoginResponse refresh(String refreshToken) throws InvalidCredentialsException {
+        // Buscar en Redis el username al que corresponde este UUID
+        RefreshToken token = refreshRepo
             .findById(refreshToken)
-            .orElseThrow(() -> new InvalidRefreshTokenException(refreshToken));
+            .orElseThrow(() -> new InvalidCredentialsException(InvalidCredentialsException.CredentialType.REFRESH_TOKEN, refreshToken));
 
-        // Buscar ahora el usuario completo
-        User user = userRepo
-            .findByUsername(token.user())
-            .orElseThrow(() -> new UsernameNotFoundException(token.user()));
+        log.debug("POST /auth/refresh found user=\"{}\" with Refresh={}", token.username(), refreshToken);
 
-        // Autenticar al usuario
-        Authentication auth = new UsernamePasswordAuthenticationToken(
-            user.getUsername(),
-            null,
-            user.getAuthorities()
-        );
+        // NOTA: si los usuarios se borran, también se eliminan sus tokens de
+        // Redis. En caso de querer implementar la posibilidad de banear cuentas,
+        // se debería comprobar aquí.
 
-        // Generar JWT y RefreshToken
-        String newJwt = generateJwt(auth);
-        RefreshToken newRefreshToken = generateRefreshToken(auth);
+        String newJwt = generateJwt(token.username(), token.role(), null);
+        RefreshToken newRefreshToken = generateRefreshToken(token.username(), token.role());
 
-        // Borrar la entrada anterior
-        refreshRepo.deleteById(refreshToken);
+        log.debug("POST /auth/refresh new tokens JWT={} Refresh={}", newJwt, newRefreshToken.uuid());
 
         return new LoginResponse(
-            new User.LoginResponse(newJwt, jwtTtl),
+            new User.LoginResponse(newJwt, AUTH_TYPE, jwtTtl),
             newRefreshToken
         );
     }
 
-    public void logout(String jwt) {
-        Authentication auth = validateAuthHeader(jwt);
-        if (auth.getPrincipal() == null) {
-            throw new RuntimeException("Internal Error");
+    public void logout() throws InvalidCredentialsException {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        // Esto no debería ejecutarse nunca si los métodos del controlador están
+        // bien anotados con los permisos.
+        if (auth == null || auth.getPrincipal() == null) {
+            // Lanzar esta excepción para que el status sea 401
+            throw new InvalidCredentialsException(InvalidCredentialsException.CredentialType.JWT, "<empty>");
         }
 
-        User user = (User) auth.getPrincipal();
+        User.AuthUser user = (User.AuthUser) auth.getPrincipal();
+        log.debug("POST /auth/logout user=\"{}\"", user.username());
 
         // Invalidar tokens del usuario
-        refreshRepo.deleteAllByUser(user.getUsername());
+        refreshRepo.deleteAllByUser(user.username());
     }
+
+    // NOTA: se implementa aquí porque está más relacionado con la seguridad que
+    // con la gestion (creación, lectura, borrado) de usuarios.
+    public RefreshToken changePassword(
+        String userId, User.PasswordChangeRequest request
+    ) throws ResourceNotFoundException, InvalidCredentialsException {
+        // Comprobar contraseña vieja
+        User user = userRepo
+            .findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new InvalidCredentialsException(InvalidCredentialsException.CredentialType.PASSWORD, request.currentPassword());
+        }
+
+        // Actualizar contraseña en la BD
+        user.setPassword(request.newPassword(), passwordEncoder);
+        userRepo.save(user);
+        log.debug("POST /users/{}/password changed for user=\"{}\"", user.getUsername(), user.getUsername());
+
+        // Rotar refresh tokens
+        RefreshToken newRefreshToken = generateRefreshToken(user.getUsername(), user.getRole());
+        log.debug("POST /users/{}/password new Refresh={}", user.getUsername(), newRefreshToken.uuid());
+
+        return newRefreshToken;
+    }
+
+    // ==== VALIDACIÓN =========================================================
 
     /** Usado por el filtro para comprobar la <code>Authorization</code> cookie */
     public Authentication validateAuthHeader(String value) throws JwtException {
         // Eliminar la parte de Bearer
         String jwt = value.replaceFirst("^Bearer ", "");
 
-        // Verificar la firma
+        // Verificar JWT
         Claims claims = Jwts.parser()
             .verifyWith(keyPair.getPublic())
             .build()
             .parseSignedClaims(jwt)
             .getPayload();
 
-        // Comprobar si el usuario existe
-        String username = claims.getSubject();
-        User user = userRepo
-            .findByUsername(username)
-            .orElseThrow(() -> new UsernameNotFoundException("'%s' not found".formatted(username)));
+        // Extraer datos relevantes del JWT
+        User.AuthUser authUser = new User.AuthUser(
+            claims.getSubject(),
+            claims.get(JWT_ACTIVE_CHARACTER, String.class),
+            claims.get(JWT_ROLE, GlobalRole.class)
+        );
 
-        // Si ha salido bien, autorizar
-        return UsernamePasswordAuthenticationToken.authenticated(username, jwt, user.getAuthorities());
-    }
+        // NOTA: esto puede dar problemas si se borra el usuario, ya que el JWT
+        // seguirá siendo válido. El JWT tiene una corta duración, por lo que no
+        // es mucho problema, de lo contrario, habría que chequear aquí la BD.
 
-    // TODO: esto no
-    public RoleHierarchy loadRoleHierarchy() {
-        RoleHierarchyImpl.Builder builder = RoleHierarchyImpl.withRolePrefix("");
-
-        roleRepo.findAll().forEach(role -> {
-            if (!role.includes().isEmpty()) {
-                builder.role("ROLE_" + role.roleName()).implies(
-                    role
-                        .includes()
-                        .stream()
-                        .map(i -> "ROLE_" + i.roleName())
-                        .toArray(String[]::new)
-                );
-            }
-
-            if (!role.permissions().isEmpty()) {
-                builder.role("ROLE_" + role.roleName()).implies(
-                    role
-                        .permissions()
-                        .stream()
-                        .map(Permission::toString)
-                        .toArray(String[]::new)
-                );
-            }
-        });
-
-        return builder.build();
+        // Devolver objeto autenticado para poner en el contexto global
+        return UsernamePasswordAuthenticationToken.authenticated(
+            authUser,
+            jwt,
+            authUser.role().asAuthorities()
+        );
     }
 
     // ==== VALIDACIÓN DE PERMISOS =============================================
 
-    public boolean isOwner(String collection, String id, Authentication auth) {
-        Ownable resource = mongo.findById(id, Ownable.class, collection);
+    public boolean isUserOwner(String collection, String objectId, User.AuthUser user) {
+        Ownable resource = mongo.findById(objectId, Ownable.class, collection);
         if (resource == null) {
             return false;
         }
 
-        return resource.getOwnerId().equals(auth.getName());
+        return resource.getOwnerId().equals(user.username());
+    }
+
+    public boolean isCharOwner(String collection, String objectId, User.AuthUser user) {
+        Ownable resource = mongo.findById(objectId, Ownable.class, collection);
+        if (resource == null) {
+            return false;
+        }
+
+        return resource.getOwnerId().equals(user.activeCharacter());
     }
 
     // ==== GENERACIÓN DE TOKENS ===============================================
 
-    private String generateJwt(Authentication auth) {
-        List<String> roles = auth.getAuthorities()
-            .stream()
-            .filter(authority -> authority instanceof SimpleGrantedAuthority)
-            .map(GrantedAuthority::getAuthority)
-            .toList();
-
+    private String generateJwt(String username, GlobalRole role, @Nullable String activeCharacter) {
         return Jwts.builder()
-            .subject(auth.getName())
+            .subject(username)
             .issuedAt(Date.from(Instant.now()))
             .expiration(Date.from(Instant.now().plus(jwtTtl)))
             .notBefore(Date.from(Instant.now()))
-            .claim("roles", roles)
+            .claim(JWT_ROLE, role)
+            .claim(JWT_ACTIVE_CHARACTER, activeCharacter)
             .signWith(keyPair.getPrivate(), Jwts.SIG.ES256)
             .compact();
     }
 
-    private RefreshToken generateRefreshToken(Authentication auth) {
-        // Generar jwt: en este caso es un UUID
+    private RefreshToken generateRefreshToken(String username, GlobalRole role) {
+        // Generar refresh token: en este caso es un UUID
         UUID uuid = UUID.randomUUID();
         RefreshToken refreshToken = new RefreshToken(
             uuid.toString(),
-            auth.getName(),
+            username,
+            role,
             refreshTtl.toSeconds()
         );
 
-        // Almacenar jwt en redis, limpiando los anteriores.
+        // Almacenar refresh token en Redis, limpiando los anteriores.
         // Gracias a esto, es posible revocar tokens de usuarios, permitiendo
         // implementar logout (tanto por el usuario como si hay brechas de
         // seguridad)
-        refreshRepo.deleteAllByUser(auth.getName());
+        refreshRepo.deleteAllByUser(username);
         refreshRepo.save(refreshToken);
 
         return refreshToken;

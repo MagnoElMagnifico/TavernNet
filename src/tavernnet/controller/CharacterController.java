@@ -1,6 +1,5 @@
 package tavernnet.controller;
 
-import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import jakarta.validation.constraints.NotBlank;
@@ -15,7 +14,7 @@ import tavernnet.service.UserService;
 import tavernnet.service.CharacterService;
 import tavernnet.model.Character;
 
-import java.util.List;
+import java.util.Collection;
 
 @RestController
 @RequestMapping("users")
@@ -56,7 +55,7 @@ public class CharacterController {
 
     // Servicio para obtener todos los personajes de un usuario
     @GetMapping("{userid}/characters")
-    public List<Character> getCharacters(@PathVariable("userid") String id) {
+    public Collection<Character> getCharacters(@PathVariable("userid") String id) {
         // TODO: user not found
         return characterService.getCharactersByUser(id);
     }

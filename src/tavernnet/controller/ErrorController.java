@@ -20,7 +20,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import tavernnet.exception.DuplicatedResourceException;
-import tavernnet.exception.InvalidRefreshTokenException;
+import tavernnet.exception.InvalidCredentialsException;
 import tavernnet.exception.ResourceNotFoundException;
 
 import java.net.URI;
@@ -224,7 +224,7 @@ public class ErrorController {
 
     @ExceptionHandler({
         BadCredentialsException.class,
-        InvalidRefreshTokenException.class
+        InvalidCredentialsException.class
     })
     public ErrorResponse handleInvalidAuthToken(Exception ex, HttpServletRequest request) {
         log.warn("Invalid credentials {}: {}", request.getRequestURI(), ex.getMessage());

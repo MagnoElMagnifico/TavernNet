@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -16,17 +17,24 @@ import tavernnet.service.AuthService;
 import tavernnet.utils.JwtFilter;
 
 @Configuration
-@EnableMethodSecurity()
+@EnableMethodSecurity
 public class SecurityConfiguration {
 
     private final JwtFilter jwtFilter;
-    private final AuthService auth;
+    //private final AuthService auth;
 
     @Autowired
     public SecurityConfiguration(JwtFilter jwtFilter, AuthService auth) {
         this.jwtFilter = jwtFilter;
-        this.auth = auth;
+        //this.auth = auth;
     }
+
+    /*
+    @Bean
+    public AuthService getAuthService() {
+        return auth;
+    }
+    */
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
@@ -60,6 +68,8 @@ public class SecurityConfiguration {
 
     @Bean
     public RoleHierarchy roleHierarchy() {
-        return auth.loadRoleHierarchy();
+        RoleHierarchyImpl.Builder builder = RoleHierarchyImpl.withRolePrefix("ROLE_");
+        builder.role("ADMIN").implies("USER");
+        return builder.build();
     }
 }

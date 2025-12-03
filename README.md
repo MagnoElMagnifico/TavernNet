@@ -69,11 +69,11 @@ Usuarios y autenticacion:
 
 | Verbo    | URL                                           | Descripción                                    | Autenticacion |
 |----------|-----------------------------------------------|------------------------------------------------|---------------|
-| `GET`    | `/users?search=xxx&page=0&count=10`           | Buscar por nombre de usuario                   | No            |
+| `GET`    | `/users?search=xxx&page=0&count=10`           | Buscar por nombre de usuario                   | No            | Falta paginación
 | `POST`   | `/users`                                      | Crear nuevo usuario                            | *No*          |
 | `GET`    | `/users/{userid}`                             | Consultar perfil de usuario                    | No            |
 | `DELETE` | `/users/{userid}`                             | Borrar usuario                                 | Si            |
-| `POST`   | `/users/{userid}/password`                    | Cambiar contraseña del usuario                 | Si            |
+| `POST`   | `/users/{userid}/password`                    | Cambiar contraseña del usuario                 | Si            | Probar
 | `POST`   | `/users/{userid}/characters`                  | Crear personaje                                | Si            |
 | `GET`    | `/users/{userid}/characters/{character-name}` | Consultar stats de personaje                   | No            |
 | `PATCH`  | `/users/{userid}/characters/{character-name}` | Editar stats de personaje                      | Si            |
@@ -88,6 +88,8 @@ Usuarios y autenticacion:
 -   `ADMIN`: tiene todos los permisos, puede ejecutar todos los _endpoints_.
 -   `USER`: se asigna por defecto a todos los usuarios creados. Solo tiene
     permisos sobre los recursos sobre los que es dueño.
+
+Jerarquía: `ADMIN > USER`
 
 Este `USER`, directamente solo podrá:
 
@@ -117,7 +119,6 @@ El _RefreshToken_ será un UUID que se enviará en una cookie segura llamada
 _refresh_. Nótese también que al borrar un usuario o cambiar la contraseña
 invalida sus _RefreshTokens_.
 
-
 Luego, para ser 100% RESTful, los _endpoints_ de inicio de sesión no deberían
 ser los que se han seleccionado:
 
@@ -143,9 +144,6 @@ Otras decisiones de diseño / implementación:
 -   El cambio de contraseña, aunque es una operación sobre `/users`, se
     implementa en `AuthService` porque se trata de una operación de seguridad y
     necesita acceso al repositorio de los _RefreshTokens_.
--   `DatabaseInicializer` crea unas entradas en la BD si no existen, incluyendo
-    los índices necesarios. Esto hace que se marquen con el nombre de la clase
-    apropiada, en lugar de crearlos manualmente.
 
 Creación de posts:
 
@@ -183,6 +181,18 @@ Se puede consultar el modelo actualizado en el archivo [model.mdj](./model.mdj)
 usando StarUML. La siguiente captura de pantalla puede que esté desactualizada.
 
 ![](TavernNet.png)
+
+# Características de implementación
+
+-   `DatabaseInicializer` crea unas entradas en la BD si no existen, incluyendo
+    los índices necesarios. Esto hace que se marquen con el nombre de la clase
+    apropiada, en lugar de crearlos manualmente.
+-   Se ha hecho una anotación que permite validar `ObjectId`s.
+-   Interfaz `Ownable` para determinar quién es el dueño de un recurso.
+-   `ErrorController` que maneja gran parte de los errores por peticiones
+    inválidas.
+-   Todos los servicios dejan registrado lo que van haciendo en _logs_.
+
 
 # Estilo del código
 

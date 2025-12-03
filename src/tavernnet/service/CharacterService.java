@@ -4,19 +4,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.List;
-
 
 import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Character;
-import tavernnet.model.User;
 import tavernnet.repository.CharacterRepository;
 import tavernnet.utils.patch.JsonPatch;
 import tavernnet.utils.patch.JsonPatchOperation;
@@ -43,11 +41,11 @@ public class CharacterService {
      */
     // TODO: parámetros para personalizar el algoritmo
     // TODO: paginación
-    public List<@NotNull @Valid Character> getCharacters() {
+    public Collection<Character> getCharacters() {
         return characterbase.findAll();
     }
 
-    public List<@NotNull @Valid Character> getCharactersByUser(String id) {
+    public Collection<Character> getCharactersByUser(String id) {
         return characterbase.getCharactersByUser(id);
     }
 

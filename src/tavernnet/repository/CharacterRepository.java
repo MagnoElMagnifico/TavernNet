@@ -6,7 +6,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import java.util.Collection;
 
 import tavernnet.model.Character;
 
@@ -17,10 +17,10 @@ public interface CharacterRepository extends MongoRepository<Character, ObjectId
      * @return Lista de todos los posts en la base de datos.
      */
     @Query("{}")
-    List<Character> getCharacters();
+    Collection<Character> getCharacters();
 
     @Query("{ 'user': '?0' }")
-    List<Character> getCharactersByUser(String username);
+    Collection<Character> getCharactersByUser(String username);
 
     @Query(value = "{ 'user': ?0, 'name': ?1 }", exists = true)
     boolean existsByName(String username, String characterName);
