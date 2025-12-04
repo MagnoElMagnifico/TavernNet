@@ -1,5 +1,7 @@
 package tavernnet.controller;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
 import org.jspecify.annotations.NullMarked;
@@ -11,10 +13,9 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 
 import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
+import tavernnet.model.Pagination;
 import tavernnet.model.User;
 import tavernnet.service.UserService;
-
-import java.util.Collection;
 
 @RestController
 @RequestMapping("users")
@@ -31,8 +32,20 @@ public class UserController {
     // Puede acceder tanto usuarios autenticados como no
     @GetMapping
     @PreAuthorize("true")
-    public Collection<String> getUsers() {
-        return user.getUsers();
+    public Pagination<String> getUsers(
+        @RequestParam(value = "search", required = false, defaultValue = "")
+        String searchTerm,
+
+        @Min(value = 0, message = "Minimum page is 0")
+        @RequestParam(value = "page", required = false, defaultValue = "0")
+        int pageNumber,
+
+        @RequestParam(value = "count", required = false, defaultValue = "10")
+        @Min(value = 5, message = "Minimum page size is 5")
+        @Max(value = 1000, message = "Maximum page size is 1000")
+        int pageSize
+    ) {
+        return user.getUsers(searchTerm, pageNumber, pageSize);
     }
 
     // Servicio para obtener un usuario por ID

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 import tavernnet.exception.*;
 import tavernnet.model.*;
@@ -46,15 +47,14 @@ public class UserService implements UserDetailsService {
         this.refreshRepo = refreshRepo;
     }
 
-    // TODO: paginación
-    // TODO: quizá esto no tiene demasiado sentido, mejor filtrar por nombre de usuario
-    public Collection<String> getUsers() {
-        log.debug("GET /users search=??? page=??? count=???");
-        return userRepo
-            .findAll()
-            .stream()
-            .map(User::getUsername)
-            .toList();
+    public Pagination<String> getUsers(String searchTerm, int pageNumber, int pageSize) {
+        log.debug("GET /users search={} page={} count={}", searchTerm, pageNumber, pageSize);
+        var root = userRepo.searchByUsernameWithCount(
+            Pattern.quote(searchTerm),
+             pageNumber*pageSize,
+             pageSize
+        );
+        return Pagination.from(root, pageNumber);
     }
 
     public User.PublicProfile getUser(String username) throws ResourceNotFoundException {

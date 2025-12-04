@@ -93,12 +93,27 @@ def test_noauth_user(user: User):
     print('\n==== USUARIOS ====')
 
     # BUSCAR USUARIOS
-    # - Los resultados de la busqueda coinciden con la query
-    # - El número de elementos es el mismo que el solicitado
-    # TODO: paginación
-    r = requests.get(f'{SITE}/users')
+    r = requests.get(f'{SITE}/users?search=test&page=0&count=7')
     check(r, HTTPStatus.OK)
-    print_summary(r, msg='Users list')
+    print_summary(r, msg='Users list paginated')
+
+    json = r.json()
+    # El número de elementos es el mismo que el solicitado
+    assert len(json['page']) <= 7, f'elements in the page is incorrect, got {len(json['page'])}, expected 7 or less'
+    assert json['page_number'] == 0, f'got page_number {json['page_number']}, expected 0'
+
+    # Limites de la paginacion
+    r = requests.get(f'{SITE}/users?search=test&page=100')
+    check(r, HTTPStatus.OK)
+    print_summary(r, msg='Users list pagination out of bounds')
+    json = r.json()
+    assert len(json['page']) == 0, f'page out of limit gives {len(json['page'])} elements'
+
+    # Otros limites
+    r = requests.get(f'{SITE}/users?search=test&page=-1')
+    check(r, HTTPStatus.UNPROCESSABLE_ENTITY)
+    print_summary(r, msg='Invalid params to pagination')
+
 
     # CREAR USUARIO
     # Correcto
