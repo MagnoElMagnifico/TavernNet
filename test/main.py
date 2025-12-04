@@ -321,7 +321,7 @@ def test_login(user: User) -> LoginUser:
     # LOGIN PARA EL RESTO DE PRUEBAS
     r = requests.post(
         f'{SITE}/auth/login',
-        json={'username': user.username, 'password': user.password}
+        json={'username': user.username, 'password': new_password}
     )
     check(r, HTTPStatus.OK)
     print_summary(r)
@@ -422,9 +422,13 @@ def test_auth_user():
 '''
 
 if __name__ == '__main__':
-    user = User(f'testuser{random.randint(0,100):03d}', 'passwd+1234')
+    user = User(f'testuser{random.randint(0,999):03d}', 'passwd+1234')
+    new_password = 'nueva-contraseña1234'
+
     print(f'User to use: "{user.username}":"{user.password}"')
     test_noauth(user)
     login_user = test_login(user)
     test_auth(login_user)
+
+    print('\n==== ALL TESTS PASSED ====')
 

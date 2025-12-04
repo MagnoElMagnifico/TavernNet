@@ -25,22 +25,25 @@ public class UserService implements UserDetailsService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
+    private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepo;
     private final CharacterRepository charRepo;
-    private final AuthService authServ;
-    private final PasswordEncoder passwordEncoder;
+    private final UserRefreshTokenRepository userRefreshRepo;
+    private final RefreshTokenRepository refreshRepo;
 
     @Autowired
     public UserService(
+        PasswordEncoder passwordEncoder,
         UserRepository userRepo,
         CharacterRepository charRepo,
-        AuthService authServ,
-        PasswordEncoder passwordEncoder
+        UserRefreshTokenRepository userRefreshRepo,
+        RefreshTokenRepository refreshRepo
     ) {
+        this.passwordEncoder = passwordEncoder;
         this.userRepo = userRepo;
         this.charRepo = charRepo;
-        this.authServ = authServ;
-        this.passwordEncoder = passwordEncoder;
+        this.userRefreshRepo = userRefreshRepo;
+        this.refreshRepo = refreshRepo;
     }
 
     // TODO: paginación
@@ -95,7 +98,13 @@ public class UserService implements UserDetailsService {
         log.debug("DELETE /users/{} deleted user", username);
 
         // También borrar la sesión del usuario para que no queden sesiones "zombie"
-        authServ.deleteRefreshTokensByUsername(username);
+        var optionalUrt = userRefreshRepo.findById(username);
+        optionalUrt.ifPresent(urt -> {
+            // Borrar tokens
+            refreshRepo.deleteById(urt.uuid());
+            // Borrar la entrada del usuario
+            userRefreshRepo.deleteById(urt.username());
+        });
         log.debug("DELETE /users/{} deleted user's refresh tokens", username);
     }
 
@@ -110,4 +119,3 @@ public class UserService implements UserDetailsService {
             .orElseThrow(() -> new UsernameNotFoundException(username));
     }
 }
-

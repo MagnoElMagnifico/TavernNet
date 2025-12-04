@@ -1,8 +1,10 @@
 package tavernnet.model;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
+import org.springframework.data.redis.core.TimeToLive;
 
 /** Para evitar que haya varios tokens del mismo usuario, se añaden estas
  * entradas para comprobar que token tiene cada usuario.
@@ -17,5 +19,11 @@ public record UserRefreshToken (
     String username,
 
     @NotBlank(message = "RefreshToken value must be not null or blank")
-    String uuid
+    String uuid,
+
+    // Tiempo de vida de la entrada en segundos.
+    // Mismo que el del RefreshToken
+    @Min(value = 1, message = "TTL minimum of 1")
+    @TimeToLive
+    long ttl
 ) {}

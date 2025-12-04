@@ -13,7 +13,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import tavernnet.service.AuthService;
 import tavernnet.utils.JwtFilter;
 
 @Configuration
@@ -21,20 +20,18 @@ import tavernnet.utils.JwtFilter;
 public class SecurityConfiguration {
 
     private final JwtFilter jwtFilter;
-    //private final AuthService auth;
 
     @Autowired
-    public SecurityConfiguration(JwtFilter jwtFilter, AuthService auth) {
+    public SecurityConfiguration(JwtFilter jwtFilter) {
         this.jwtFilter = jwtFilter;
-        //this.auth = auth;
     }
 
-    /*
     @Bean
-    public AuthService getAuthService() {
-        return auth;
+    public RoleHierarchy roleHierarchy() {
+        RoleHierarchyImpl.Builder builder = RoleHierarchyImpl.withRolePrefix("ROLE_");
+        builder.role("ADMIN").implies("USER");
+        return builder.build();
     }
-    */
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
@@ -47,29 +44,22 @@ public class SecurityConfiguration {
                 // Las parties son todas privadas
                 .requestMatchers(HttpMethod.POST, "/parties/**").authenticated()
 
-                // En general, las operaciones de lectura estan permitidas
+                // En general, las operaciones de lectura están permitidas
                 .requestMatchers(HttpMethod.GET, "/**").permitAll()
 
-                // El resto, todas deben llevar un JWT, o bien recibira un 401
+                // El resto, todas deben llevar un JWT, o bien recibirá un 401
                 .anyRequest().authenticated()
             )
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // Ejecutar nuestro filtro antes del de spring: si existe la cabecera, se pillara aqui
             .addFilterBefore(jwtFilter, BasicAuthenticationFilter.class)
-            // Si el filtro lanza una excepcion, significa que el token no es valido: no esta autenticado
+            // Si el filtro lanza una excepción, significa que el token no es válido: no está autenticado
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
                 })
             )
             .build();
-    }
-
-    @Bean
-    public RoleHierarchy roleHierarchy() {
-        RoleHierarchyImpl.Builder builder = RoleHierarchyImpl.withRolePrefix("ROLE_");
-        builder.role("ADMIN").implies("USER");
-        return builder.build();
     }
 }

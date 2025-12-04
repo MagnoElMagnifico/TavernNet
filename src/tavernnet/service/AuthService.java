@@ -182,10 +182,9 @@ public class AuthService {
         String userId, User.PasswordChangeRequest request
     ) throws ResourceNotFoundException, InvalidCredentialsException {
         // Comprobar contraseña vieja
-        User user = mongo.findById(userId, User.class);
-        if (user == null) {
-            throw new ResourceNotFoundException("User", userId);
-        }
+        User user = userRepo
+            .findByUsername(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new InvalidCredentialsException(InvalidCredentialsException.CredentialType.PASSWORD, request.currentPassword());
@@ -290,19 +289,26 @@ public class AuthService {
             refreshTtl.toSeconds()
         );
 
+        UserRefreshToken userRefresh = new UserRefreshToken(
+            username,
+            refreshToken.uuid(),
+            refreshToken.ttl()
+        );
+
         // Almacenar refresh token en Redis, limpiando los anteriores.
         // Gracias a esto, es posible revocar tokens de usuarios, permitiendo
         // implementar logout (tanto por el usuario como si hay brechas de
         // seguridad)
         deleteRefreshTokensByUsername(username);
         refreshRepo.save(refreshToken);
+        userRefreshRepo.save(userRefresh);
 
         return refreshToken;
     }
 
     // ==== FUNCIONES DE AYUDA =================================================
 
-    public void deleteRefreshTokensByUsername(String username) {
+    private void deleteRefreshTokensByUsername(String username) {
         var optionalUrt = userRefreshRepo.findById(username);
         optionalUrt.ifPresent(urt -> {
             // Borrar tokens
