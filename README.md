@@ -65,7 +65,7 @@ _Parties_:
 
 # Diseño de la API
 
-Usuarios y autenticacion:
+Usuarios y autenticación:
 
 | Verbo    | URL                                           | Descripción                                    | Autenticacion |
 |----------|-----------------------------------------------|------------------------------------------------|---------------|
@@ -78,9 +78,9 @@ Usuarios y autenticacion:
 | `GET`    | `/users/{userid}/characters/{character-name}` | Consultar stats de personaje                   | No            |
 | `PATCH`  | `/users/{userid}/characters/{character-name}` | Editar stats de personaje                      | Si            |
 | `DELETE` | `/users/{userid}/characters/{character-name}` | Borrar el personaje                            | Si            |
-| `POST`   | `/auth/login`                                 | Iniciar sesion como usuario                    | *No*          |
-| `POST`   | `/auth/character-login`                       | Iniciar sesion como un personaje               | Si            |
-| `POST`   | `/auth/logout`                                | Cierra sesion (ADMIN puede sobre otro usuario) | Si            |
+| `POST`   | `/auth/login`                                 | Iniciar sesión como usuario                    | *No*          |
+| `POST`   | `/auth/character-login`                       | Iniciar sesión como un personaje               | Si            |
+| `POST`   | `/auth/logout`                                | Cierra sesión (ADMIN puede sobre otro usuario) | Si            |
 | `POST`   | `/auth/refresh`                               | Genera un nuevo token sin contraseña           | Si            |
 
 2 roles:
@@ -135,7 +135,7 @@ Pero, hemos decidido no hacerlo por los siguientes motivos:
 -   No aporta ningún beneficio adicional, de hecho, solo complica la
     implementación por tener que añadir identificadores a las sesiones.
 
-Otras decisiones de diseño / implementación:
+Otras decisiones de diseño:
 
 -   Se usa `POST` en lugar de `PUT` para el cambio de contraseña porque no es
     idempotente, es decir, no se puede repetir la petición de forma segura: si
@@ -192,6 +192,7 @@ usando StarUML. La siguiente captura de pantalla puede que esté desactualizada.
 -   `ErrorController` que maneja gran parte de los errores por peticiones
     inválidas.
 -   Todos los servicios dejan registrado lo que van haciendo en _logs_.
+-   Scripts que prueban la API completa.
 
 
 # Estilo del código
