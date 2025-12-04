@@ -24,6 +24,7 @@ import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.*;
 import tavernnet.repository.CharacterRepository;
 import tavernnet.repository.RefreshTokenRepository;
+import tavernnet.repository.UserRefreshTokenRepository;
 import tavernnet.repository.UserRepository;
 
 import java.security.KeyPair;
@@ -47,6 +48,7 @@ public class AuthService {
 
     private final UserRepository userRepo;
     private final RefreshTokenRepository refreshRepo;
+    private final UserRefreshTokenRepository userRefreshRepo;
     private final MongoTemplate mongo;
     private final CharacterRepository charRepo;
 
@@ -65,6 +67,7 @@ public class AuthService {
         PasswordEncoder passwordEncoder,
 
         RefreshTokenRepository refreshRepo,
+        UserRefreshTokenRepository userRefreshRepo,
         UserRepository userRepo,
         MongoTemplate mongo,
         CharacterRepository charRepo
@@ -74,6 +77,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
 
         this.refreshRepo = refreshRepo;
+        this.userRefreshRepo = userRefreshRepo;
         this.userRepo = userRepo;
         this.mongo = mongo;
         this.charRepo = charRepo;
@@ -93,6 +97,8 @@ public class AuthService {
 
     /** Autentica un usuario a partir de sus credenciales */
     public LoginResponse login(User.LoginRequest login) throws ResourceNotFoundException {
+        log.debug("POST /auth/login for user=\"{}\"", login.username());
+
         // Autenticar al usuario
         // Primero se crea un objeto Authentication con la propiedad
         // authentication=false, hace que `isAuthenticated()` devuelva false.
@@ -118,15 +124,15 @@ public class AuthService {
             throw new BadCredentialsException("unreachable error");
         }
 
-        if (
-            login.activeCharacter() != null
-            && !charRepo.existsById(new ObjectId(login.activeCharacter()))
-        ) {
-            throw new ResourceNotFoundException("Character", login.activeCharacter());
+        String activeChar = login.activeCharacter();
+        if (activeChar != null) {
+            if (!ObjectId.isValid(activeChar) || !charRepo.existsById(new ObjectId(activeChar))) {
+                throw new ResourceNotFoundException("Character", login.activeCharacter());
+            }
         }
 
         // Generar JWT y RefreshToken
-        String jwt = generateJwt(login.username(), user.getRole(), login.activeCharacter());
+        String jwt = generateJwt(login.username(), user.getRole(), activeChar);
         RefreshToken refreshToken = generateRefreshToken(login.username(), user.getRole());
 
         log.debug("POST /auth/login created tokens JWT={} Refresh={}", jwt, refreshToken.uuid());
@@ -150,6 +156,7 @@ public class AuthService {
         // Redis. En caso de querer implementar la posibilidad de banear cuentas,
         // se debería comprobar aquí.
 
+        // TODO: como gestionamos aquí el personaje activo?
         String newJwt = generateJwt(token.username(), token.role(), null);
         RefreshToken newRefreshToken = generateRefreshToken(token.username(), token.role());
 
@@ -162,20 +169,11 @@ public class AuthService {
     }
 
     public void logout() throws InvalidCredentialsException {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        // Esto no debería ejecutarse nunca si los métodos del controlador están
-        // bien anotados con los permisos.
-        if (auth == null || auth.getPrincipal() == null) {
-            // Lanzar esta excepción para que el status sea 401
-            throw new InvalidCredentialsException(InvalidCredentialsException.CredentialType.JWT, "<empty>");
-        }
-
-        User.AuthUser user = (User.AuthUser) auth.getPrincipal();
+        User.AuthUser user = getAuthUser();
         log.debug("POST /auth/logout user=\"{}\"", user.username());
 
         // Invalidar tokens del usuario
-        refreshRepo.deleteAllByUser(user.username());
+        deleteRefreshTokensByUsername(user.username());
     }
 
     // NOTA: se implementa aquí porque está más relacionado con la seguridad que
@@ -184,9 +182,11 @@ public class AuthService {
         String userId, User.PasswordChangeRequest request
     ) throws ResourceNotFoundException, InvalidCredentialsException {
         // Comprobar contraseña vieja
-        User user = userRepo
-            .findById(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        User user = mongo.findById(userId, User.class);
+        if (user == null) {
+            throw new ResourceNotFoundException("User", userId);
+        }
+
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new InvalidCredentialsException(InvalidCredentialsException.CredentialType.PASSWORD, request.currentPassword());
         }
@@ -221,7 +221,7 @@ public class AuthService {
         User.AuthUser authUser = new User.AuthUser(
             claims.getSubject(),
             claims.get(JWT_ACTIVE_CHARACTER, String.class),
-            claims.get(JWT_ROLE, GlobalRole.class)
+            GlobalRole.valueOf(claims.get(JWT_ROLE, String.class))
         );
 
         // NOTA: esto puede dar problemas si se borra el usuario, ya que el JWT
@@ -241,18 +241,28 @@ public class AuthService {
     public boolean isUserOwner(String collection, String objectId, User.AuthUser user) {
         Ownable resource = mongo.findById(objectId, Ownable.class, collection);
         if (resource == null) {
+            log.debug("Not found user owner of \"{}\" Collection=\"{}\"", objectId, collection);
             return false;
         }
 
+        log.debug(
+            "User owner of \"{}\" is \"{}\" AuthUser=\"{}\" Collection=\"{}\"",
+            objectId, resource.getOwnerId(), user.username(), collection
+        );
         return resource.getOwnerId().equals(user.username());
     }
 
     public boolean isCharOwner(String collection, String objectId, User.AuthUser user) {
         Ownable resource = mongo.findById(objectId, Ownable.class, collection);
         if (resource == null) {
+            log.debug("Not found character owner of \"{}\" Collection=\"{}\"", objectId, collection);
             return false;
         }
 
+        log.debug(
+            "Character owner of \"{}\" is \"{}\" AuthUser=\"{}\" Collection=\"{}\"",
+            objectId, resource.getOwnerId(), user.username(), collection
+        );
         return resource.getOwnerId().equals(user.activeCharacter());
     }
 
@@ -264,7 +274,7 @@ public class AuthService {
             .issuedAt(Date.from(Instant.now()))
             .expiration(Date.from(Instant.now().plus(jwtTtl)))
             .notBefore(Date.from(Instant.now()))
-            .claim(JWT_ROLE, role)
+            .claim(JWT_ROLE, role.toString())
             .claim(JWT_ACTIVE_CHARACTER, activeCharacter)
             .signWith(keyPair.getPrivate(), Jwts.SIG.ES256)
             .compact();
@@ -284,9 +294,35 @@ public class AuthService {
         // Gracias a esto, es posible revocar tokens de usuarios, permitiendo
         // implementar logout (tanto por el usuario como si hay brechas de
         // seguridad)
-        refreshRepo.deleteAllByUser(username);
+        deleteRefreshTokensByUsername(username);
         refreshRepo.save(refreshToken);
 
         return refreshToken;
     }
+
+    // ==== FUNCIONES DE AYUDA =================================================
+
+    public void deleteRefreshTokensByUsername(String username) {
+        var optionalUrt = userRefreshRepo.findById(username);
+        optionalUrt.ifPresent(urt -> {
+            // Borrar tokens
+            refreshRepo.deleteById(urt.uuid());
+            // Borrar la entrada del usuario
+            userRefreshRepo.deleteById(urt.username());
+        });
+    }
+
+    private static User.AuthUser getAuthUser() throws InvalidCredentialsException {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        // Esto no debería ejecutarse nunca si los métodos del controlador están
+        // bien anotados con los permisos.
+        if (auth == null || auth.getPrincipal() == null) {
+            // Lanzar esta excepción para que el status sea 401
+            throw new InvalidCredentialsException(InvalidCredentialsException.CredentialType.JWT, "<empty>");
+        }
+
+        return (User.AuthUser) auth.getPrincipal();
+    }
+
 }

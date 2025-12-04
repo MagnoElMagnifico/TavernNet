@@ -21,7 +21,7 @@ import java.util.Objects;
 
 @NullMarked
 @Document(collection = "users")
-public class User implements UserDetails {
+public class User implements UserDetails, Ownable {
 
     // ==== REPRESENTACIONES INTERNAS ==========================================
 
@@ -86,6 +86,7 @@ public class User implements UserDetails {
         String password,
 
         // Posibilidad de iniciar sesion directamente con un personaje concreto
+        @JsonProperty("active_character")
         @Nullable
         String activeCharacter
     ) {
@@ -111,8 +112,10 @@ public class User implements UserDetails {
     // Cuerpo de la petición de cambiar la contraseña
     public record PasswordChangeRequest(
         @NotBlank(message = "Current password must be not null or blank")
+        @JsonProperty("current_password")
         String currentPassword,
         @NotBlank(message = "New password must be not null or blank")
+        @JsonProperty("new_password")
         String newPassword
     ) {}
 
@@ -124,14 +127,11 @@ public class User implements UserDetails {
 
     /** <strong>IMPORTANTE</strong>: Debe usarse <code>PasswordEncoder</code>. */
     @Field(name = "password")
-    @JsonIgnore
     @NotBlank(message = "Password must be not null or blank")
     private String passwordHash;
 
     private final GlobalRole role;
     private final LocalDateTime creation;
-
-    // ==== METODOS ============================================================
 
     public User(String username, String passwordHash, GlobalRole role, LocalDateTime creation) {
         this.username = username;
@@ -140,12 +140,7 @@ public class User implements UserDetails {
         this.creation = creation;
     }
 
-    public User(String username, String password, PasswordEncoder passwordEncoder, GlobalRole role, LocalDateTime creation) {
-        this.username = username;
-        this.passwordHash = Objects.requireNonNull(passwordEncoder.encode(password));
-        this.role = role;
-        this.creation = creation;
-    }
+    // ==== METODOS ============================================================
 
     public void setPassword(String password, PasswordEncoder passwordEncoder) {
         passwordHash = Objects.requireNonNull(passwordEncoder.encode(password));
@@ -164,6 +159,12 @@ public class User implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return role.asAuthorities();
+    }
+
+    @Override
+    public String getOwnerId() {
+        // El usuario es dueño de si mismo
+        return username;
     }
 
     public LocalDateTime getCreation() {

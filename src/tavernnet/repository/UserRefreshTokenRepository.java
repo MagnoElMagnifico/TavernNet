@@ -3,13 +3,13 @@ package tavernnet.repository;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
-import tavernnet.model.RefreshToken;
+import tavernnet.model.UserRefreshToken;
 
 import java.util.Optional;
 
 @Repository
 @NullMarked
-public interface RefreshTokenRepository extends CrudRepository<RefreshToken, String> {
-    void deleteById(String token);
-    Optional<RefreshToken> findById(String token);
+public interface UserRefreshTokenRepository  extends CrudRepository<UserRefreshToken, String> {
+    void deleteById(String username);
+    Optional<UserRefreshToken> findById(String username);
 }

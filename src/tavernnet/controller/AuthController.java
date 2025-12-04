@@ -20,7 +20,7 @@ import tavernnet.service.AuthService;
 
 @NullMarked
 @RestController
-@RequestMapping("/auth")
+@RequestMapping
 public class AuthController {
     private static final String REFRESH_TOKEN_COOKIE_NAME = "__Secure-RefreshToken";
     private final AuthService auth;
@@ -31,7 +31,7 @@ public class AuthController {
     }
 
     /** Permitir que usuarios sin autenticar puedan autenticarse */
-    @PostMapping("login")
+    @PostMapping("/auth/login")
     @PreAuthorize("isAnonymous()")
     public ResponseEntity<User.LoginResponse> login(
         @RequestBody @Valid User.LoginRequest user
@@ -55,7 +55,7 @@ public class AuthController {
      * Debe poder se anonimo, ya que cuando se necesite llamar a este endpoint
      * el JWT habra expirado.
      */
-    @PostMapping("refresh")
+    @PostMapping("/auth/refresh")
     @PreAuthorize("isAnonymous()")
     public ResponseEntity<User.LoginResponse> refresh(
         @CookieValue(name=REFRESH_TOKEN_COOKIE_NAME)
@@ -78,7 +78,7 @@ public class AuthController {
      * Revocar <code>RefreshToken</code> para que el usuario tenga que hacer
      * login manualmente otra vez.
      */
-    @PostMapping("logout")
+    @PostMapping("/auth/logout")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> logout() throws InvalidCredentialsException {
         // Borrar el refresh token de redis

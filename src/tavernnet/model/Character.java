@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 
 @Document(collection = "characters")
-public class Character {
+public class Character implements Ownable {
+
     // TODO: validacion
 
     /** DTO para el POST de crear un personaje */
@@ -74,6 +75,11 @@ public class Character {
         this(null, character.name, author, character.biography, character.race,
             character.languages, character.alignment, character.stats,
             character.actions, LocalDateTime.now());
+    }
+
+    @Override
+    public String getOwnerId() {
+        return user;
     }
 
     public ObjectId getId() {

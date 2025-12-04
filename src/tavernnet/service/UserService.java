@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.Objects;
 
 import tavernnet.exception.*;
 import tavernnet.model.*;
@@ -26,26 +27,26 @@ public class UserService implements UserDetailsService {
 
     private final UserRepository userRepo;
     private final CharacterRepository charRepo;
-    private final RefreshTokenRepository tokenRepo;
+    private final AuthService authServ;
     private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public UserService(
         UserRepository userRepo,
         CharacterRepository charRepo,
-        RefreshTokenRepository tokenRepo,
+        AuthService authServ,
         PasswordEncoder passwordEncoder
     ) {
         this.userRepo = userRepo;
         this.charRepo = charRepo;
-        this.tokenRepo = tokenRepo;
+        this.authServ = authServ;
         this.passwordEncoder = passwordEncoder;
     }
 
     // TODO: paginación
     // TODO: quizá esto no tiene demasiado sentido, mejor filtrar por nombre de usuario
     public Collection<String> getUsers() {
-        log.debug("GET /users search:??? page:??? count:???");
+        log.debug("GET /users search=??? page=??? count=???");
         return userRepo
             .findAll()
             .stream()
@@ -74,8 +75,7 @@ public class UserService implements UserDetailsService {
 
         User user = new User(
             newUser.username(),
-            newUser.password(),
-            passwordEncoder,
+            Objects.requireNonNull(passwordEncoder.encode(newUser.password())),
             GlobalRole.USER,
             LocalDateTime.now()
         );
@@ -95,7 +95,7 @@ public class UserService implements UserDetailsService {
         log.debug("DELETE /users/{} deleted user", username);
 
         // También borrar la sesión del usuario para que no queden sesiones "zombie"
-        tokenRepo.deleteAllByUser(username);
+        authServ.deleteRefreshTokensByUsername(username);
         log.debug("DELETE /users/{} deleted user's refresh tokens", username);
     }
 
