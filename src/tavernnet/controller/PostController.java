@@ -2,6 +2,7 @@ package tavernnet.controller;
 
 import jakarta.validation.Valid;
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import java.util.Collection;
 
 @RestController
 @RequestMapping("posts")
+@NullMarked
 public class PostController {
     PostService posts;
 

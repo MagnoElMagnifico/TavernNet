@@ -57,18 +57,6 @@ public class UserService implements UserDetailsService {
         return Pagination.from(root, pageNumber);
     }
 
-    public User.PublicProfile getUser(String username) throws ResourceNotFoundException {
-        User user = userRepo
-            .findById(username)
-            .orElseThrow(() -> new ResourceNotFoundException("User", username));
-
-        // Obtener los personajes de este usuario
-        Collection<Character> characters = charRepo.getCharactersByUser(username);
-        log.debug("GET /users/{} with {} characters", username, characters.size());
-
-        return new User.PublicProfile(user, characters);
-    }
-
     public void createUser(
         User.LoginRequest newUser
     ) throws DuplicatedResourceException {
@@ -85,6 +73,18 @@ public class UserService implements UserDetailsService {
 
         userRepo.save(user);
         log.debug("POST /users new user=\"{}\"", newUser.username());
+    }
+
+    public User.PublicProfile getUser(String username) throws ResourceNotFoundException {
+        User user = userRepo
+            .findById(username)
+            .orElseThrow(() -> new ResourceNotFoundException("User", username));
+
+        // Obtener los personajes de este usuario
+        Collection<Character> characters = charRepo.getCharactersByUser(username);
+        log.debug("GET /users/{} with {} characters", username, characters.size());
+
+        return new User.PublicProfile(user, characters);
     }
 
     /**

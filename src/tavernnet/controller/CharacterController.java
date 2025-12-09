@@ -1,7 +1,7 @@
 package tavernnet.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jakarta.validation.Valid;
+import org.jspecify.annotations.NullMarked;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +10,6 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 
 import tavernnet.exception.*;
 import tavernnet.exception.ResourceNotFoundException;
-import tavernnet.service.UserService;
 import tavernnet.service.CharacterService;
 import tavernnet.model.Character;
 
@@ -18,15 +17,24 @@ import java.util.Collection;
 
 @RestController
 @RequestMapping("users")
+@NullMarked
 public class CharacterController {
-    private static final Logger log = LoggerFactory.getLogger(CharacterController.class);
-    private final UserService userService;
+
     private final CharacterService characterService;
 
     @Autowired
-    public CharacterController(UserService userService, CharacterService characterService) {
-        this.userService = userService;
+    public CharacterController(CharacterService characterService) {
         this.characterService = characterService;
+    }
+
+    // Servicio para obtener todos los personajes de un usuario
+    @GetMapping("{userid}/characters")
+    public Collection<Character> getCharacters(
+        @PathVariable("userid")
+        @NotBlank(message = "Username must be not null or blank")
+        String id
+    ) throws ResourceNotFoundException {
+        return characterService.getCharactersByUser(id);
     }
 
     /**
@@ -36,10 +44,13 @@ public class CharacterController {
      */
     @PostMapping("{userid}/characters")
     public ResponseEntity<Void> createCharacter(
-        @PathVariable("userid") @NotBlank String userId, // TODO: unused
-        @RequestBody Character.CreationRequest newCharacter
-    ) throws DuplicatedResourceException {
+        @PathVariable("userid")
+        @NotBlank(message = "Userid must be not null or blank")
+        String userId,
 
+        @RequestBody @Valid
+        Character.CreationRequest newCharacter
+    ) throws DuplicatedResourceException, ResourceNotFoundException {
             String newId = characterService.createCharacter(newCharacter, userId);
 
             var url = MvcUriComponentsBuilder.fromMethodName(
@@ -52,29 +63,6 @@ public class CharacterController {
 
             return ResponseEntity.created(url).build();
     }
-
-    // Servicio para obtener todos los personajes de un usuario
-    @GetMapping("{userid}/characters")
-    public Collection<Character> getCharacters(@PathVariable("userid") String id) {
-        // TODO: user not found
-        return characterService.getCharactersByUser(id);
-    }
-
-
-    /**
-     * @param userId Nombre del usuario al que pertenece el personaje
-     * @param characterName Nombre del personaje a borrar
-     * @throws ResourceNotFoundException Si el ID no existe
-     */
-    @DeleteMapping("{userid}/characters/{characterName}")
-    public ResponseEntity<Void> deleteCharacter(
-        @PathVariable("userid") String userId, @PathVariable("characterName")
-        String characterName
-    ) throws ResourceNotFoundException {
-        characterService.deleteCharacter(userId, characterName);
-        return ResponseEntity.noContent().build();
-    }
-
 
     /**
      * <code>GET /users/{userid}/characters/{characterName}</code>
@@ -90,5 +78,17 @@ public class CharacterController {
         return characterService.getCharacter(userId, characterName);
     }
 
+    /**
+     * @param userId Nombre del usuario al que pertenece el personaje
+     * @param characterName Nombre del personaje a borrar
+     * @throws ResourceNotFoundException Si el ID no existe
+     */
+    @DeleteMapping("{userid}/characters/{characterName}")
+    public ResponseEntity<Void> deleteCharacter(
+        @PathVariable("userid") String userId, @PathVariable("characterName")
+        String characterName
+    ) throws ResourceNotFoundException {
+        characterService.deleteCharacter(userId, characterName);
+        return ResponseEntity.noContent().build();
+    }
 }
-

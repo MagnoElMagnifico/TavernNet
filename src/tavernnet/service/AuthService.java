@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import tavernnet.exception.InvalidCredentialsException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.*;
+import tavernnet.model.Character;
 import tavernnet.repository.CharacterRepository;
 import tavernnet.repository.RefreshTokenRepository;
 import tavernnet.repository.UserRefreshTokenRepository;
@@ -113,6 +115,10 @@ public class AuthService {
                 login.password()
             )
         );
+        // Añadir esto al contexto, para que Spring sepa que ahora estamos autenticados
+        // Principalmente para que la excepcion AccessDeniedException devuelva un
+        // 401 en lugar de un 403, cosa que se deduce a partir de este contexto.
+        SecurityContextHolder.getContext().setAuthentication(auth);
         log.debug("POST /auth/login successful for user=\"{}\"", login.username());
 
         // Como se está leyendo a traves de un UserService, el principal de este
@@ -125,17 +131,54 @@ public class AuthService {
         }
 
         String activeChar = login.activeCharacter();
+        ObjectId activeCharOid = null;
         if (activeChar != null) {
-            if (!ObjectId.isValid(activeChar) || !charRepo.existsById(new ObjectId(activeChar))) {
+            // Si el formato del ID es valido, dar un error directamente
+            if (!ObjectId.isValid(activeChar)) {
                 throw new ResourceNotFoundException("Character", login.activeCharacter());
+            }
+
+            activeCharOid = new ObjectId(activeChar);
+
+            // Validar que el personaje existe
+            Character character = charRepo.getCharacterById(activeCharOid);
+            if (character == null) {
+                throw new ResourceNotFoundException("Character", login.activeCharacter());
+            }
+
+            // Validar que el usuario tiene permisos
+            if (user.getRole() != GlobalRole.ADMIN && !character.getOwnerId().equals(user.getUsername())) {
+                throw new AccessDeniedException("User not owner of character " + character.getOwnerId());
             }
         }
 
         // Generar JWT y RefreshToken
-        String jwt = generateJwt(login.username(), user.getRole(), activeChar);
+        String jwt = generateJwt(login.username(), user.getRole(), activeCharOid);
         RefreshToken refreshToken = generateRefreshToken(login.username(), user.getRole());
 
         log.debug("POST /auth/login created tokens JWT={} Refresh={}", jwt, refreshToken.uuid());
+
+        return new LoginResponse(
+            new User.LoginResponse(jwt, AUTH_TYPE, jwtTtl),
+            refreshToken
+        );
+    }
+
+    public LoginResponse loginCharacter(ObjectId characterId) throws ResourceNotFoundException, InvalidCredentialsException {
+        User.AuthUser authUser = getAuthUser();
+        log.debug("POST /auth/login-character for user=\"{}\"", authUser.username());
+
+        // No es necesario verificar que el personaje existe porque ya se hace al validar los permisos
+        /*if (!charRepo.existsById(characterId)) {
+            throw new ResourceNotFoundException("Character", characterId.toHexString());
+        }*/
+
+        // Usando el JWT de la peticion, se cambia el personaje activo
+        // Esto implica generar un nuevo JWT
+        String jwt = generateJwt(authUser.username(), authUser.role(), characterId);
+        RefreshToken refreshToken = generateRefreshToken(authUser.username(), authUser.role());
+
+        log.debug("POST /auth/login-character created tokens JWT={} Refresh={}", jwt, refreshToken.uuid());
 
         return new LoginResponse(
             new User.LoginResponse(jwt, AUTH_TYPE, jwtTtl),
@@ -217,9 +260,20 @@ public class AuthService {
             .getPayload();
 
         // Extraer datos relevantes del JWT
+        // En caso de que el ID del personaje activo sea incorrecto, dejar a null
+        String activeCharId = claims.get(JWT_ACTIVE_CHARACTER, String.class);
+        ObjectId activeCharIdOid = null;
+        if (activeCharId != null) {
+            if (ObjectId.isValid(activeCharId)) {
+                activeCharIdOid = new ObjectId(activeCharId);
+            } else {
+                log.warn("Invalid ObjectId in active character JWT user={} charid={}", claims.getSubject(), activeCharId);
+            }
+        }
+
         User.AuthUser authUser = new User.AuthUser(
             claims.getSubject(),
-            claims.get(JWT_ACTIVE_CHARACTER, String.class),
+            activeCharIdOid,
             GlobalRole.valueOf(claims.get(JWT_ROLE, String.class))
         );
 
@@ -237,11 +291,11 @@ public class AuthService {
 
     // ==== VALIDACIÓN DE PERMISOS =============================================
 
-    public boolean isUserOwner(String collection, String objectId, User.AuthUser user) {
+    public boolean isUserOwner(String collection, String objectId, User.AuthUser user) throws ResourceNotFoundException {
         Ownable resource = mongo.findById(objectId, Ownable.class, collection);
         if (resource == null) {
             log.debug("Not found user owner of \"{}\" Collection=\"{}\"", objectId, collection);
-            return false;
+            throw new ResourceNotFoundException(collection, objectId);
         }
 
         log.debug(
@@ -251,11 +305,11 @@ public class AuthService {
         return resource.getOwnerId().equals(user.username());
     }
 
-    public boolean isCharOwner(String collection, String objectId, User.AuthUser user) {
+    public boolean isCharOwner(String collection, String objectId, User.AuthUser user) throws ResourceNotFoundException {
         Ownable resource = mongo.findById(objectId, Ownable.class, collection);
         if (resource == null) {
             log.debug("Not found character owner of \"{}\" Collection=\"{}\"", objectId, collection);
-            return false;
+            throw new ResourceNotFoundException(collection, objectId);
         }
 
         log.debug(
@@ -267,14 +321,14 @@ public class AuthService {
 
     // ==== GENERACIÓN DE TOKENS ===============================================
 
-    private String generateJwt(String username, GlobalRole role, @Nullable String activeCharacter) {
+    private String generateJwt(String username, GlobalRole role, @Nullable ObjectId activeCharacter) {
         return Jwts.builder()
             .subject(username)
             .issuedAt(Date.from(Instant.now()))
             .expiration(Date.from(Instant.now().plus(jwtTtl)))
             .notBefore(Date.from(Instant.now()))
             .claim(JWT_ROLE, role.toString())
-            .claim(JWT_ACTIVE_CHARACTER, activeCharacter)
+            .claim(JWT_ACTIVE_CHARACTER, (activeCharacter == null)? null : activeCharacter.toHexString())
             .signWith(keyPair.getPrivate(), Jwts.SIG.ES256)
             .compact();
     }

@@ -2,7 +2,9 @@ import requests
 import uuid
 import random
 import re
-from collections import namedtuple
+import json
+import base64
+from dataclasses import dataclass
 from http import HTTPStatus
 
 '''
@@ -22,24 +24,46 @@ pip install requests
 
 # ==== DEFINICIONES GLOBALES ==================================================
 
+@dataclass
+class Character:
+    id: str
+    name: str
+
+@dataclass
+class User:
+    username: str
+    password: str
+    character: Character | None
+
+@dataclass
+class LoginUser:
+    username: str
+    password: str
+    character: Character | None
+    jwt: str
+    refresh: str
+
+
 SITE = 'http://localhost:8080'
 REFRESH_COOKIE = '__Secure-RefreshToken'
+JWT_ACTIVE_CHAR = 'act_ch'
 
-User = namedtuple('User', ['username', 'password'])
-LoginUser = namedtuple('User', ['username', 'password', 'jwt', 'refresh'])
+NEW_USER_PREFIX = 'testuser'
+NEW_USER_PASSW = 'passwd+1234'
+NEW_USER_CHAR_NAME = 'Test Character'
+NEW_PASSWD = 'new&secure_passd1234'
+
+ADMIN_USER = User('marcos', '1234', None)
+CHAR_EXISTS = Character('6926c3037385de4eb73a2e1d', 'Zarion')
+USER_EXISTS = User('jeremias', 'password', CHAR_EXISTS)
+
+USERNAME_NOT_EXISTS = 'user-not-found'
+INVALID_PASSWD = 'invalid-password'
+CHAR_NAME_NOT_EXISTS = 'some random character name'
+INVALID_ID = '6926c3037385de4eb73a2e1f'
+
 
 # ==== FUNCIONES DE AYUDA =====================================================
-
-def check(response: requests.Response, allowed: HTTPStatus):
-    if allowed.value == response.status_code:
-        if response.status_code >= 400 and len(response.text) >= 1_000:
-            print_summary(response, msg='WARN: response too long')
-        return
-
-    print(f'\n==== ERROR (unexpected status {allowed} {allowed.phrase}) ====')
-    print_response(response)
-    raise SystemExit(1)
-
 
 def print_summary(r: requests.Response, msg: str | None = None, max_len = 150):
     # Acortar el cuerpo para ver solo la primera parte
@@ -66,6 +90,62 @@ def print_response(response: requests.Response):
     print(body)
 
 
+def check(response: requests.Response, allowed: HTTPStatus, msg: str | None = None):
+    if allowed.value == response.status_code:
+        if response.status_code >= 400 and len(response.text) >= 1_000:
+            print_summary(response, msg='WARN: response too long' + (': ' + msg if msg is not None else ''))
+        else:
+            print_summary(response, msg=msg)
+    else:
+        print(f'\n==== ERROR (unexpected status {allowed} {allowed.phrase}) ====')
+        print_response(response)
+        assert False
+
+
+# ==== ESTABLECER ESTADO INICIAL ==============================================
+
+def test_setup() -> User:
+    '''
+    Crea un usuario y un personaje sobre el que poder ejecutar las operaciones.
+    Realmente también prueba estas dos operaciones, pero no comprueba nada más.
+    '''
+
+    print("==== SETUP ====")
+    user = User(f'{NEW_USER_PREFIX}{random.randint(0,999):03d}', NEW_USER_PASSW, None)
+    new_password = 'nueva-contraseña1234'
+
+    print(f'User to use: "{user.username}":"{user.password}"')
+
+    # Crear usuario
+    r = requests.post(f'{SITE}/users', json={'username': user.username, 'password': user.password})
+    # Comprobar estado, hay posibilidades de que el nombre generado
+    # aleatoriamente ya exista
+    check(r, HTTPStatus.CREATED)
+
+    # Autenticar
+    r = requests.post(
+        f'{SITE}/auth/login',
+        json={'username': user.username, 'password': user.password}
+    )
+    check(r, HTTPStatus.OK)
+    json = r.json()
+    header = {'Authorization': f'{json.get("token_type")} {json.get("access_token")}'}
+
+    # Crear personaje
+    r = requests.post(
+        f'{SITE}/users/{user.username}/characters',
+        # TODO: completar con los campos necesarios
+        json={'name': NEW_USER_CHAR_NAME, 'user': user.username},
+        headers=header
+    )
+    check(r, HTTPStatus.CREATED)
+
+    # Intentar obtener el ID del personaje desde la cabecera Location
+    char_id = r.headers.get('location').split('/')[-1]
+    user.character = Character(char_id, NEW_USER_CHAR_NAME)
+    return user
+
+
 # ==== PRUEBAS NO AUTH ========================================================
 
 def test_noauth(user: User):
@@ -74,7 +154,7 @@ def test_noauth(user: User):
     Recibe como parámetro un usuario que no exista sobre el que hacer las pruebas.
     '''
 
-    print('\n==== SIN AUTENTICAR ============================================')
+    print('\n==== NO AUTHENTICATION ========================================')
     test_noauth_user(user)
     test_noauth_post()
     test_noauth_party()
@@ -90,12 +170,11 @@ def test_noauth_user(user: User):
     Recibe como parámetro un usuario que no exista sobre el que hacer las pruebas.
     '''
 
-    print('\n==== USUARIOS ====')
+    print('\n==== USERS ====')
 
     # BUSCAR USUARIOS
-    r = requests.get(f'{SITE}/users?search=test&page=0&count=7')
+    r = requests.get(f'{SITE}/users?search={NEW_USER_PREFIX}&page=0&count=7')
     check(r, HTTPStatus.OK)
-    print_summary(r, msg='Users list paginated')
 
     json = r.json()
     # El número de elementos es el mismo que el solicitado
@@ -103,44 +182,61 @@ def test_noauth_user(user: User):
     assert json['page_number'] == 0, f'got page_number {json['page_number']}, expected 0'
 
     # Limites de la paginacion
-    r = requests.get(f'{SITE}/users?search=test&page=100')
+    r = requests.get(f'{SITE}/users?search={NEW_USER_PREFIX}&page=100')
     check(r, HTTPStatus.OK)
-    print_summary(r, msg='Users list pagination out of bounds')
     json = r.json()
     assert len(json['page']) == 0, f'page out of limit gives {len(json['page'])} elements'
 
     # Otros limites
-    r = requests.get(f'{SITE}/users?search=test&page=-1')
+    r = requests.get(f'{SITE}/users?search={NEW_USER_PREFIX}&page=-1')
     check(r, HTTPStatus.UNPROCESSABLE_ENTITY)
-    print_summary(r, msg='Invalid params to pagination')
-
 
     # CREAR USUARIO
-    # Correcto
-    r = requests.post(f'{SITE}/users', json={'username': user.username, 'password': user.password})
-    check(r, HTTPStatus.CREATED)
-    print_summary(r, msg=f'Created user {user.username}')
-
+    # NOTA: el usuario ya se creó en test_setup()
     # Repetido
     r = requests.post(f'{SITE}/users', json={'username': user.username, 'password': user.password})
     check(r, HTTPStatus.CONFLICT)
-    print_summary(r, msg=f'User {user.username} already exists')
 
     # VER USUARIO INDIVIDUAL
+    # No existe
+    r = requests.get(f'{SITE}/users/{USERNAME_NOT_EXISTS}')
+    check(r, HTTPStatus.NOT_FOUND)
+
     # Correcto
     r = requests.get(f'{SITE}/users/{user.username}')
     check(r, HTTPStatus.OK)
-    print_summary(r, 'Get user OK')
-    # TODO: Incluye sus personajes
-    # TODO: No existe
 
-    # TODO: CONSULTAR PERSONAJE
-    # - No existe personaje
-    # - No existe el usuario
+    # En test_setup() se creó un personaje, comprobar que aparece en esta salida
+    json = r.json()
+    recv_username = json.get('username')
+    recv_characters = json.get('characters')
+    recv_character_names = list(map(lambda character: character['name'], recv_characters))
+    recv_character_names_set = set(recv_character_names)
+    print('Received username:', recv_username)
+    print('Received character names:', recv_character_names)
+    assert user.character is not None, 'User has no character??? Setup failed somehow'
+    assert recv_username == user.username, f'Checking response username, expected {user.username}, got {json.get('username')}'
+    assert len(recv_characters) == 1, f'Expected 1 character, got {len(recv_characters)}'
+    assert len(recv_character_names_set) == len(recv_character_names), f'There are {len(recv_character_names) - len(recv_character_names_set)} repeated names'
+    assert user.character.name in recv_character_names, 'Created character not found in response'
+
+    # CONSULTAR PERSONAJE
+    print('\n==== CHARACTERS ====')
+    # No existe el usuario
+    r = requests.get(f'{SITE}/users/{USERNAME_NOT_EXISTS}/characters/{CHAR_NAME_NOT_EXISTS}')
+    check(r, HTTPStatus.NOT_FOUND)
+
+    # No existe personaje
+    r = requests.get(f'{SITE}/users/{user.username}/characters/{CHAR_NAME_NOT_EXISTS}')
+    check(r, HTTPStatus.NOT_FOUND)
+
+    r = requests.get(f'{SITE}/users/{user.username}/characters/{user.character.name}')
+    check(r, HTTPStatus.OK)
 
 
 def test_noauth_post():
     print('\n==== POSTS ====')
+    # TODO: completar estos tests
     # VER/BUSCAR POSTS
     # VER POST INDIVIDUAL
     # VER COMENTARIOS DE UN POST
@@ -149,6 +245,7 @@ def test_noauth_post():
 
 def test_noauth_party():
     print('\n==== PARTIES ====')
+    # TODO: completar estos tests
     # VER/BUSCAR PARTIES
     # VER PARTY INDIVIDUAL
     pass
@@ -167,39 +264,23 @@ def test_login(user: User) -> LoginUser:
     autenticado para continuar las pruebas.
     '''
 
-    print('\n==== PRUEBAS DE AUTENTICACIÓN ==================================')
+    print('\n==== LOGIN AND REFRESH TESTS ===================================')
 
     # INICIAR SESIÓN
     print('\n==== LOGIN ====')
     # No existe el usuario
     r = requests.post(
         f'{SITE}/auth/login',
-        json={'username': 'usuario_que_no_existe', 'password': 'contraseña'}
+        json={'username': USERNAME_NOT_EXISTS, 'password': INVALID_PASSWD}
     )
     check(r, HTTPStatus.UNAUTHORIZED)
-    print_summary(r, msg='User does not exist')
 
     # Contraseña incorrecta
     r = requests.post(
         f'{SITE}/auth/login',
-        json={'username': user.username, 'password': 'invalid-password'}
+        json={'username': user.username, 'password': INVALID_PASSWD}
     )
     check(r, HTTPStatus.UNAUTHORIZED)
-    print_summary(r, msg='Invalid password')
-
-    # Si se especifica un personaje, que ese no exista
-    r = requests.post(
-        f'{SITE}/auth/login',
-        json={
-            'username': user.username,
-            'password': user.password,
-            'active_character': 'personaje-no-existente'
-        }
-    )
-    check(r, HTTPStatus.NOT_FOUND)
-    print_summary(r, msg='Character not found')
-
-    # TODO: login con personaje que funcione
 
     # Correcto
     r = requests.post(
@@ -207,11 +288,53 @@ def test_login(user: User) -> LoginUser:
         json={'username': user.username, 'password': user.password}
     )
     check(r, HTTPStatus.OK)
-    print_summary(r)
-    jwt = r.json().get('access_token')
-    refresh_token = r.cookies.get(REFRESH_COOKIE)
+    jwt: str = r.json().get('access_token')
+    refresh_token: str = r.cookies.get(REFRESH_COOKIE)
     print(f'JWT ({len(jwt)}): {jwt}')
     print('RefreshToken:', refresh_token)
+
+    # Si se especifica un personaje, que ese no exista
+    r = requests.post(
+        f'{SITE}/auth/login',
+        json={
+            'username': user.username,
+            'password': user.password,
+            'active_character': CHAR_NAME_NOT_EXISTS,
+        }
+    )
+    check(r, HTTPStatus.NOT_FOUND)
+
+    # Si se especifica un personaje, que este sea de otro usuario
+    r = requests.post(
+        f'{SITE}/auth/login',
+        json={
+            'username': user.username,
+            'password': user.password,
+            'active_character': CHAR_EXISTS.id
+        }
+    )
+    check(r, HTTPStatus.FORBIDDEN)
+
+    # Correcto con un personaje
+    assert user.character is not None, 'User has no character??? Setup failed somehow'
+    r = requests.post(
+        f'{SITE}/auth/login',
+        json={
+            'username': user.username,
+            'password': user.password,
+            'active_character': user.character.id
+        }
+    )
+    check(r, HTTPStatus.OK)
+    jwt: str = r.json().get('access_token')
+    refresh_token: str = r.cookies.get(REFRESH_COOKIE)
+    print(f'JWT ({len(jwt)}): {jwt}')
+    print('RefreshToken:', refresh_token)
+
+    # Comprobar que el nuevo JWT contiene un campo con el usuario activo
+    jwt_content = json.loads(base64.b64decode(jwt.split('.')[1] + '=='))
+    print('JWT content', jwt_content)
+    assert jwt_content[JWT_ACTIVE_CHAR] == user.character.id, 'JWT does not have active character'
 
 
     # REFRESH
@@ -221,65 +344,57 @@ def test_login(user: User) -> LoginUser:
         f'{SITE}/auth/refresh',
         cookies={REFRESH_COOKIE: str(uuid.uuid4())}
     )
-    print_summary(r, msg='Invalid refresh token')
+    check(r, HTTPStatus.UNAUTHORIZED)
 
     # Correcto
     r = requests.post(
         f'{SITE}/auth/refresh',
         cookies={REFRESH_COOKIE: refresh_token}
     )
-    print_summary(r)
-    jwt2 = r.json().get('access_token')
-    refresh_token2 = r.cookies.get(REFRESH_COOKIE)
-    print(f'New JWT ({len(jwt2)}): {jwt2})')
-    print('New refresh:', refresh_token2)
+    check(r, HTTPStatus.OK)
+    jwt = r.json().get('access_token')
+    refresh_token = r.cookies.get(REFRESH_COOKIE)
+    print(f'New JWT ({len(jwt)}): {jwt})')
+    print('New refresh:', refresh_token)
 
 
     # CAMBIAR CONTRASEÑA
-    print('\n==== CAMBIAR CONTRASEÑA ====')
-    new_password = 'new&secure_passd1234'
+    print('\n==== PASSWORD CHANGE ====')
     # Usuario no existe
     r = requests.post(
-        f'{SITE}/users/user-not-exists/password',
-        headers={'Authorization': 'Bearer ' + jwt2},
-        json={'current_password': user.password, 'new_password': new_password}
+        f'{SITE}/users/{USERNAME_NOT_EXISTS}/password',
+        headers={'Authorization': 'Bearer ' + jwt},
+        json={'current_password': user.password, 'new_password': NEW_PASSWD}
     )
-    # No es 404 porque cuando se intentan validar los permisos, no se encuentra
-    # el usuario.
-    check(r, HTTPStatus.FORBIDDEN)
-    print_summary(r, msg='User not found')
+    check(r, HTTPStatus.NOT_FOUND)
 
     # Contraseña incorrecta
     r = requests.post(
         f'{SITE}/users/{user.username}/password',
-        headers={'Authorization': 'Bearer ' + jwt2},
-        json={'current_password': 'invalid-password', 'new_password': new_password}
+        headers={'Authorization': 'Bearer ' + jwt},
+        json={'current_password': INVALID_PASSWD, 'new_password': NEW_PASSWD}
     )
     check(r, HTTPStatus.UNAUTHORIZED)
-    print_summary(r, msg='Invalid password')
 
     # Correcto
     r = requests.post(
         f'{SITE}/users/{user.username}/password',
-        headers={'Authorization': 'Bearer ' + jwt2},
-        json={'current_password': user.password, 'new_password': new_password}
+        headers={'Authorization': 'Bearer ' + jwt},
+        json={'current_password': user.password, 'new_password': NEW_PASSWD}
     )
     check(r, HTTPStatus.NO_CONTENT)
-    print_summary(r, msg='Password change OK')
-    refresh_token3 = r.cookies.get(REFRESH_COOKIE)
+    new_refresh_token = r.cookies.get(REFRESH_COOKIE)
 
     # Comprobar que el refresh token cambia
-    r = requests.post(f'{SITE}/auth/refresh', cookies={REFRESH_COOKIE: refresh_token2})
+    r = requests.post(f'{SITE}/auth/refresh', cookies={REFRESH_COOKIE: refresh_token})
     check(r, HTTPStatus.UNAUTHORIZED)
-    print_summary(r, msg='Password changes RefreshToken')
 
-    r = requests.post(f'{SITE}/auth/refresh', cookies={REFRESH_COOKIE: refresh_token3})
+    r = requests.post(f'{SITE}/auth/refresh', cookies={REFRESH_COOKIE: new_refresh_token})
     check(r, HTTPStatus.OK)
-    print_summary(r, msg='Password changes RefreshToken')
-    jwt4 = r.json().get('access_token')
-    refresh_token4 = r.cookies.get(REFRESH_COOKIE)
-    print(f'New JWT ({len(jwt4)}): {jwt4})')
-    print('New refresh:', refresh_token4)
+    jwt = r.json().get('access_token')
+    refresh_token = r.cookies.get(REFRESH_COOKIE)
+    print(f'New JWT ({len(jwt)}): {jwt})')
+    print('New refresh:', refresh_token)
 
     # Probar a loguearse otra vez y que la contraseña antigua falla
     r = requests.post(
@@ -287,46 +402,62 @@ def test_login(user: User) -> LoginUser:
         json={'username': user.username, 'password': user.password}
     )
     check(r, HTTPStatus.UNAUTHORIZED)
-    print_summary(r, msg='Out-of-date password')
 
     # La nueva funciona
     r = requests.post(
         f'{SITE}/auth/login',
-        json={'username': user.username, 'password': new_password}
+        json={'username': user.username, 'password': NEW_PASSWD}
     )
     check(r, HTTPStatus.OK)
-    print_summary(r)
-    jwt5 = r.json().get('access_token')
-    refresh_token5 = r.cookies.get(REFRESH_COOKIE)
-    print(f'JWT ({len(jwt5)}): {jwt5}')
-    print('RefreshToken:', refresh_token5)
+    jwt = r.json().get('access_token')
+    new_refresh_token = r.cookies.get(REFRESH_COOKIE)
+    print(f'JWT ({len(jwt)}): {jwt}')
+    print('RefreshToken:', new_refresh_token)
 
     # Hemos hecho un nuevo login sin hacer logout, probar que el refresh token
     # anterior no vale
-    r = requests.post(f'{SITE}/auth/refresh', cookies={REFRESH_COOKIE: refresh_token4})
+    r = requests.post(f'{SITE}/auth/refresh', cookies={REFRESH_COOKIE: refresh_token})
     check(r, HTTPStatus.UNAUTHORIZED)
-    print_summary(r, msg='New login changes RefreshToken')
 
     # CAMBIAR PERSONAJE ACTIVO
-    # - El personaje no existe
-    print('\n==== CAMBIAR PERSONAJE ACTIVO ====')
-    # TODO: hay que crear un personaje aquí
+    print('\n==== CHANGE ACTIVE CHARACTER ====')
+    # El personaje no existe
+    r = requests.post(
+        f'{SITE}/auth/character-login',
+        headers={'Authorization': 'Bearer ' + jwt},
+        json={'character_id': INVALID_ID},
+    )
+    check(r, HTTPStatus.NOT_FOUND)
+
+    # No soy dueño del personaje
+    r = requests.post(
+        f'{SITE}/auth/character-login',
+        headers={'Authorization': 'Bearer ' + jwt},
+        json={'character_id': CHAR_EXISTS.id},
+    )
+    check(r, HTTPStatus.FORBIDDEN)
+
+    # Correcto
+    r = requests.post(
+        f'{SITE}/auth/character-login',
+        headers={'Authorization': 'Bearer ' + jwt},
+        json={'character_id': user.character.id},
+    )
+    check(r, HTTPStatus.OK)
+
 
     # LOGOUT
     print('\n==== LOGOUT ====')
     # El usuario no habia iniciado sesión
     r = requests.post(f'{SITE}/auth/logout')
     check(r, HTTPStatus.UNAUTHORIZED)
-    print_summary(r, msg='Logout with no session')
 
-    r = requests.post(f'{SITE}/auth/logout', headers={'Authorization': 'Bearer ' + jwt5 })
+    r = requests.post(f'{SITE}/auth/logout', headers={'Authorization': 'Bearer ' + jwt })
     check(r, HTTPStatus.NO_CONTENT)
-    print_summary(r, msg='Logout OK')
 
     # Comprobar que el RefrestToken ya no es valido
-    r = requests.post(f'{SITE}/auth/refresh', cookies={REFRESH_COOKIE: refresh_token5})
+    r = requests.post(f'{SITE}/auth/refresh', cookies={REFRESH_COOKIE: new_refresh_token})
     check(r, HTTPStatus.UNAUTHORIZED)
-    print_summary(r, msg='Logout from previous user')
 
 
     # OTROS
@@ -336,24 +467,28 @@ def test_login(user: User) -> LoginUser:
     # LOGIN PARA EL RESTO DE PRUEBAS
     r = requests.post(
         f'{SITE}/auth/login',
-        json={'username': user.username, 'password': new_password}
+        json={'username': user.username, 'password': NEW_PASSWD}
     )
     check(r, HTTPStatus.OK)
-    print_summary(r)
     jwt = r.json().get('access_token')
     refresh_token = r.cookies.get(REFRESH_COOKIE)
     print(f'JWT ({len(jwt)}): {jwt}')
     print('RefreshToken:', refresh_token)
 
-    return LoginUser(user.username, new_password, jwt, refresh_token)
+    return LoginUser(user.username, NEW_PASSWD, None, jwt, refresh_token)
+
 
 # ==== PRUEBAS QUE REQUIEREN LOGIN ============================================
 
 def test_auth(login: LoginUser):
-    print('\n==== PRUEBAS DE QUE REQUIEREN LOGIN ============================')
-    # TODO: operaciones login
-    # BORRAR USUARIO
-    # - No existe
+    '''
+    - Borrar personajes
+    - Borrar usuario
+    '''
+    print('\n==== AUTHENTICATED TESTS =======================================')
+    headers = {'Authorization': 'Bearer ' + login.jwt}
+
+    # TODO: completar estos tests
     # CREAR PERSONAJE
     # - Usuario no existe
     # - Nombre duplicado
@@ -364,9 +499,6 @@ def test_auth(login: LoginUser):
     # - JsonPath invalido
     # - Path incorrecto
     # - Valor no permitido
-    # BORRAR PERSONAJE
-    # - Usuario no existe
-    # - Personaje no existe
     #
     # CREAR UN POST
     # BORRAR UN POST
@@ -383,64 +515,44 @@ def test_auth(login: LoginUser):
     # no son dueños o sin autenticar. Repetir estas operaciones como ADMIN y ver
     # que funcionan.
 
-    # Intentar borrar sin autenticar
-    # r = requests.delete(f'{SITE}/users/{user.username}')
-    # check(r, HTTPStatus.UNAUTHORIZED)
-    # print('Verified delete without auth is UNAUTHORIZED')
-    pass
+    # BORRAR PERSONAJE
+    # - Usuario no existe
+    # - Personaje no existe
 
+    # BORRAR USUARIO
+    print('\n==== BORRAR USUARIO ====')
+    # Requiere login
+    r = requests.delete(f'{SITE}/users/{login.username}')
+    check(r, HTTPStatus.UNAUTHORIZED)
 
-'''
-def test_auth_user():
-    Probar endpoints de usuarios, autenticado como usuario
+    # No existe
+    r = requests.delete(f'{SITE}/users/{USERNAME_NOT_EXISTS}', headers=headers)
+    check(r, HTTPStatus.NOT_FOUND)
 
-    # Volvemos a logear para obtener un JWT válido para borrar el usuario
-    jwt_for_delete, refresh_for_delete, _ = login(username, new_password)
-    print('Re-login to get credentials for delete')
+    # Usuario del que no se tiene permisos
+    r = requests.delete(f'{SITE}/users/{USER_EXISTS.username}', headers=headers)
+    check(r, HTTPStatus.FORBIDDEN)
 
-    # Probar a borrar otro usuario (comprobación de permisos) -- si existe 'other' intenta borrar
-    other = 'other'
-    print('\n-- Permisos: intentar borrar otro usuario (debe DENEGARSE) --')
-    r = requests.delete(f'{SITE}/users/{other}', headers={'Authorization': 'Bearer ' + jwt_for_delete})
-    if r.status_code in (HTTPStatus.FORBIDDEN, HTTPStatus.UNAUTHORIZED, HTTPStatus.NOT_FOUND):
-        print('Attempt to delete other user correctly denied or not found (status', r.status_code, ')')
-    else:
-        print('Unexpected status when deleting other user:', r.status_code)
-        pprint_resp(r)
-
-    # Borrar el usuario propio
-    print('\n==== BORRAR USUARIO PROPIO ====')
-    r = requests.delete(f'{SITE}/users/{username}', headers={'Authorization': 'Bearer ' + jwt_for_delete})
+    # Correcto
+    r = requests.delete(f'{SITE}/users/{login.username}', headers=headers)
     check(r, HTTPStatus.NO_CONTENT)
-    print('User deleted')
 
-    # Tras borrar el usuario, el refresh token asociado debería dejar de funcionar
-    print('\n-- Comprobar refresh tras borrar usuario (debe fallar) --')
-    # usamos el refresh_for_delete que obtuvimos antes
-    r_after_del = requests.post(f'{SITE}/auth/refresh', cookies={REFRESH_COOKIE: refresh_for_delete})
-    if r_after_del.status_code == HTTPStatus.OK:
-        print('ERROR: refresh token sigue válido tras borrar usuario (posible bug)')
-        pprint_resp(r_after_del)
-        raise SystemExit(1)
-    else:
-        print('Refresh rejected after user deletion as expected (status', r_after_del.status_code, ')')
+    # No existe ahora
+    r = requests.delete(f'{SITE}/users/{login.username}', headers=headers)
+    check(r, HTTPStatus.NOT_FOUND)
 
-    # Y el JWT viejo tampoco debe permitir acciones autenticadas
-    print('\n-- Comprobar uso de JWT tras borrar usuario (debe fallar) --')
-    r_jwt_after_del = requests.get(f'{SITE}/users/{username}', headers={'Authorization': 'Bearer ' + jwt_for_delete})
-    if r_jwt_after_del.status_code in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN, HTTPStatus.NOT_FOUND):
-        print('JWT rejected after deletion as expected (status', r_jwt_after_del.status_code, ')')
-    else:
-        print('ERROR: JWT todavía válido tras borrar usuario (status', r_jwt_after_del.status_code, ')')
-        pprint_resp(r_jwt_after_del)
-        raise SystemExit(1)
-'''
+    # Comprobar que no se puede hacer refresh
+    r = requests.post(
+        f'{SITE}/auth/refresh',
+        cookies={REFRESH_COOKIE: login.refresh}
+    )
+    check(r, HTTPStatus.UNAUTHORIZED)
+
 
 if __name__ == '__main__':
-    user = User(f'testuser{random.randint(0,999):03d}', 'passwd+1234')
-    new_password = 'nueva-contraseña1234'
+    # Crear usuario y personaje para las pruebas
+    user = test_setup()
 
-    print(f'User to use: "{user.username}":"{user.password}"')
     test_noauth(user)
     login_user = test_login(user)
     test_auth(login_user)

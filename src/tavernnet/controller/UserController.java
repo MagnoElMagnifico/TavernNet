@@ -48,15 +48,6 @@ public class UserController {
         return user.getUsers(searchTerm, pageNumber, pageSize);
     }
 
-    // Servicio para obtener un usuario por ID
-    @GetMapping("{userid}")
-    @PreAuthorize("true")
-    public User.PublicProfile getUser(
-        @PathVariable("userid") @NotBlank String id
-    ) throws ResourceNotFoundException {
-        return user.getUser(id);
-    }
-
     // Servicio para crear un nuevo usuario
     @PostMapping
     @PreAuthorize("true")
@@ -71,6 +62,15 @@ public class UserController {
             .build()
             .toUri();
         return ResponseEntity.created(url).build();
+    }
+
+    // Servicio para obtener un usuario por ID
+    @GetMapping("{userid}")
+    @PreAuthorize("true")
+    public User.PublicProfile getUser(
+        @PathVariable("userid") @NotBlank String id
+    ) throws ResourceNotFoundException {
+        return user.getUser(id);
     }
 
     /**

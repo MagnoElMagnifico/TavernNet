@@ -50,6 +50,23 @@ public class AuthController {
             .body(response.body());
     }
 
+    // NOTA: dejar que los administradores hagan operaciones en nombre de otros usuarios puede ser problematico
+    @PostMapping("/auth/character-login")
+    @PreAuthorize("hasRole('ADMIN') or @auth.isUserOwner('characters', #character.characterId, principal)")
+    public ResponseEntity<User.LoginResponse> loginCharacter(
+        @RequestBody @Valid User.LoginCharacterRequest character
+    ) throws ResourceNotFoundException, InvalidCredentialsException {
+        var response = auth.loginCharacter(character.characterId());
+        return ResponseEntity
+            .ok()
+            // Configurar la cabecera Authorization
+            .headers(h -> h.setBearerAuth(response.body().jwt()))
+            // Ahora añadir la cookie configurada
+            .header(HttpHeaders.SET_COOKIE, getResponseCookie(response.refreshToken()).toString())
+            // Finalmente añadir el cuerpo
+            .body(response.body());
+    }
+
     /**
      * Regenerar un JWT a partir de un <code>RefreshToken</code>.
      * Debe poder se anonimo, ya que cuando se necesite llamar a este endpoint

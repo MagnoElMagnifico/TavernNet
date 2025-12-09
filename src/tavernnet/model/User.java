@@ -3,6 +3,7 @@ package tavernnet.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
@@ -13,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import tavernnet.utils.ValidObjectId;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -38,7 +40,7 @@ public class User implements UserDetails, Ownable {
         // - Crear/modificar/borrar personajes o cambiar el personaje seleccionado
         // - Cambiar la contraseña, cerrar sesión o borrar el usuario
         // - Administración de parties (si el usuario es DM)
-        String activeCharacter,
+        ObjectId activeCharacter,
 
         // Rol del usuario para generar la lista de authorities
         // `role` en el JWT
@@ -57,7 +59,7 @@ public class User implements UserDetails, Ownable {
         }
     }
 
-    // ==== DTOs: REQUESTS =====================================================
+    // ==== DTOs: RESPONSES ====================================================
 
     /** DTO de respuesta al mostrar usuarios */
     public record PublicProfile(
@@ -94,6 +96,12 @@ public class User implements UserDetails, Ownable {
             this(user.getUsername(), user.getPassword(), null);
         }
     }
+
+    public record LoginCharacterRequest (
+        @JsonProperty("character_id")
+        @ValidObjectId
+        ObjectId characterId
+    ) {}
 
     /** DTO de lo que recibe el usuario tras iniciar sesion  */
     public record LoginResponse (

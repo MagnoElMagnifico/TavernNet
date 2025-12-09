@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,23 +17,29 @@ import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Character;
 import tavernnet.repository.CharacterRepository;
+import tavernnet.repository.UserRepository;
 import tavernnet.utils.patch.JsonPatch;
 import tavernnet.utils.patch.JsonPatchOperation;
 import tavernnet.utils.patch.JsonPatchOperationType;
 import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 
-import java.time.LocalDateTime;
-
 @Service
+@NullMarked
 public class CharacterService {
 
     private static final Logger log = LoggerFactory.getLogger(CharacterService.class);
-    private final CharacterRepository characterbase;
+    private final CharacterRepository charRepo;
+    private final UserRepository userRepo;
     private final ObjectMapper mapper;
 
     @Autowired
-    public CharacterService(CharacterRepository characterbase, ObjectMapper mapper) {
-        this.characterbase = characterbase;
+    public CharacterService(
+        CharacterRepository charRepo,
+        UserRepository userRepo,
+        ObjectMapper mapper
+    ) {
+        this.charRepo = charRepo;
+        this.userRepo = userRepo;
         this.mapper = mapper;
     }
 
@@ -42,11 +49,14 @@ public class CharacterService {
     // TODO: parámetros para personalizar el algoritmo
     // TODO: paginación
     public Collection<Character> getCharacters() {
-        return characterbase.findAll();
+        return charRepo.findAll();
     }
 
-    public Collection<Character> getCharactersByUser(String id) {
-        return characterbase.getCharactersByUser(id);
+    public Collection<Character> getCharactersByUser(String username) throws ResourceNotFoundException {
+        if (!userRepo.existsById(username)) {
+            throw new ResourceNotFoundException("User", username);
+        }
+        return charRepo.getCharactersByUser(username);
     }
 
     /**
@@ -58,7 +68,7 @@ public class CharacterService {
     public @Valid Character getCharacter(@NotBlank String userid,
                                          @NotBlank String characterName
     ) throws ResourceNotFoundException {
-        @Valid Character character = characterbase
+        @Valid Character character = charRepo
             .getCharacterByName(userid, characterName);
         if (character == null) {
             throw new ResourceNotFoundException("Character", characterName);
@@ -70,25 +80,27 @@ public class CharacterService {
      * @param newCharacter Contenido del nuevo personaje a crear.
      * @return Id del nuevo character creado.
      */
-    public String createCharacter(Character.CreationRequest newCharacter, String userId) throws DuplicatedResourceException {
+    public String createCharacter(Character.CreationRequest newCharacter, String username) throws DuplicatedResourceException, ResourceNotFoundException {
+        // Comprobar que el usuario existe
+        if (!userRepo.existsById(username)) {
+            throw new ResourceNotFoundException("User", username);
+        }
+
+        // TODO: limitar personajes a un maximo de 10 por usuario y evitar tener que hacer paginacion
 
         // El personaje debe ser nuevo
-        if (characterbase.existsByName(userId, newCharacter.name())) {
+        if (charRepo.existsByName(username, newCharacter.name())) {
             throw new DuplicatedResourceException(newCharacter, "Character", newCharacter.name());
         }
-        Character realCharacter = new Character(newCharacter, userId);
-        // La fecha de creacion tiene que ser la de ahora
-        realCharacter.setDate(LocalDateTime.now());
 
-
-        realCharacter = characterbase.save(realCharacter);
+        Character realCharacter = charRepo.save(new Character(newCharacter, username));
         log.info("Created character with id '{}'", realCharacter.getClass());
         return realCharacter.getId().toHexString();
     }
 
     public Character updateCharacter(@NotBlank String username, @NotBlank String characterName, List<JsonPatchOperation> changes)
         throws ResourceNotFoundException, JsonPatchFailedException {
-        Character character = characterbase.getCharacterByName(username, characterName);
+        Character character = charRepo.getCharacterByName(username, characterName);
         if (character == null){
             throw new ResourceNotFoundException("Character", characterName);
         }
@@ -105,16 +117,16 @@ public class CharacterService {
         JsonNode updated_node = JsonPatch.apply(changes, mapper.convertValue(
             character, JsonNode.class));
         Character updated = mapper.convertValue(updated_node, Character.class);
-        return characterbase.save(updated);
+        return charRepo.save(updated);
     }
 
     public void deleteCharacter(@NotBlank String username, @NotBlank String characterName)
         throws ResourceNotFoundException {
-        Character  deletedCharacter = characterbase.getCharacterByName(username, characterName);
+        Character  deletedCharacter = charRepo.getCharacterByName(username, characterName);
         if (deletedCharacter == null) {
             throw new ResourceNotFoundException("Character", characterName);
         }
-        characterbase.deleteCharacterById(deletedCharacter.getId());
+        charRepo.deleteCharacterById(deletedCharacter.getId());
 
     }
 

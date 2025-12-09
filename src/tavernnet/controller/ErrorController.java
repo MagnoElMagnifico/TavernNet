@@ -241,7 +241,8 @@ public class ErrorController {
 
     // Recursos no encontrados
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ErrorResponse handlePostNotFound(ResourceNotFoundException ex) {
+    public ErrorResponse handlePostNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
+        log.warn("Resource not found {}: {}", request.getRequestURI(), ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
         problem.setTitle("%s was not found".formatted(ex.getType()));
         problem.setDetail(ex.getMessage());
@@ -251,7 +252,8 @@ public class ErrorController {
 
     // Recurso duplicado
     @ExceptionHandler(DuplicatedResourceException.class)
-    public ErrorResponse handleDuplicatedResource(DuplicatedResourceException ex) {
+    public ErrorResponse handleDuplicatedResource(DuplicatedResourceException ex, HttpServletRequest request) {
+        log.warn("Duplicated resource {}: {}", request.getRequestURI(), ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
         problem.setTitle("%s already exists".formatted(ex.getType()));
         problem.setDetail(ex.getMessage());
