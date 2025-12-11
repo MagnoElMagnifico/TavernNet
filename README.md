@@ -47,6 +47,19 @@ de Python `requests`):
 python test/main.py
 ```
 
+Esto también está integrado dentro del contenedor de desarrollo:
+
+```bash
+docker exec -ti tavernnet-server-1 sh
+# Y dentro del contenedor:
+python test/main.py
+# curl también está disponible para algunas pruebas
+# Para navegar los archivos:
+hx .
+# Para recompilar
+./gradlew build
+```
+
 # Características
 
 - [ ] Perfiles de usuario con fichas de personaje

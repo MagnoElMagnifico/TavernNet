@@ -2,7 +2,7 @@ FROM amazoncorretto:21.0.9-alpine
 WORKDIR /tavernnet
 
 # Dependencias necesarias para generar certificados y otros comandos de depuración
-RUN apk update && apk add openssl curl neovim python3 py3-requests
+RUN apk update && apk add openssl curl helix python3 py3-requests
 
 # Copiar Gradle wrapper y archivos de configuración
 COPY gradlew build.gradle settings.gradle ./
