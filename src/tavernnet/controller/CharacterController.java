@@ -5,15 +5,19 @@ import org.jspecify.annotations.NullMarked;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 import tavernnet.exception.*;
 import tavernnet.exception.ResourceNotFoundException;
+import tavernnet.model.Party;
 import tavernnet.service.CharacterService;
 import tavernnet.model.Character;
+import tavernnet.utils.patch.JsonPatchOperation;
 
 import java.util.Collection;
+import java.util.List;
 
 @RestController
 @RequestMapping("users")
@@ -29,10 +33,9 @@ public class CharacterController {
 
     // Servicio para obtener todos los personajes de un usuario
     @GetMapping("{userid}/characters")
+    @PreAuthorize("true")
     public Collection<Character> getCharacters(
-        @PathVariable("userid")
-        @NotBlank(message = "Username must be not null or blank")
-        String id
+        @PathVariable("userid") @NotBlank String id
     ) throws ResourceNotFoundException {
         return characterService.getCharactersByUser(id);
     }
@@ -43,14 +46,11 @@ public class CharacterController {
      * @return <code>201 Created</code> en éxito.
      */
     @PostMapping("{userid}/characters")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> createCharacter(
-        @PathVariable("userid")
-        @NotBlank(message = "Userid must be not null or blank")
-        String userId,
-
-        @RequestBody @Valid
-        Character.CreationRequest newCharacter
-    ) throws DuplicatedResourceException, ResourceNotFoundException {
+        @PathVariable("userid") @NotBlank String userId,
+        @RequestBody @Valid Character.CreationRequest newCharacter
+    ) throws DuplicatedResourceException, ResourceNotFoundException, LimitException {
             String newId = characterService.createCharacter(newCharacter, userId);
 
             var url = MvcUriComponentsBuilder.fromMethodName(
@@ -71,6 +71,7 @@ public class CharacterController {
      * @return Personaje solicitado
      */
     @GetMapping("{userid}/characters/{characterName}")
+    @PreAuthorize("true")
     public Character getCharacter(
         @PathVariable("userid") @NotBlank String userId,
         @PathVariable("characterName") @NotBlank String characterName
@@ -78,17 +79,28 @@ public class CharacterController {
         return characterService.getCharacter(userId, characterName);
     }
 
+    @PatchMapping("{userid}/characters/{characterName}")
+    @PreAuthorize("hasRole('ADMIN') or @auth.isCharacterOwnerByName(#username, #characterName, principal)")
+    public Character updateCharacter(
+        @PathVariable("userid") @NotBlank String username,
+        @PathVariable("characterName") @NotBlank String characterName,
+        @RequestBody @Valid List<@Valid JsonPatchOperation> changes
+    ) throws ResourceNotFoundException {
+        return characterService.updateCharacter(username, characterName, changes);
+    }
+
     /**
-     * @param userId Nombre del usuario al que pertenece el personaje
+     * @param username Nombre del usuario al que pertenece el personaje
      * @param characterName Nombre del personaje a borrar
      * @throws ResourceNotFoundException Si el ID no existe
      */
     @DeleteMapping("{userid}/characters/{characterName}")
+    @PreAuthorize("hasRole('ADMIN') or @auth.isCharacterOwnerByName(#username, #characterName, principal)")
     public ResponseEntity<Void> deleteCharacter(
-        @PathVariable("userid") String userId, @PathVariable("characterName")
-        String characterName
+        @PathVariable("userid") @NotBlank String username,
+        @PathVariable("characterName") @NotBlank String characterName
     ) throws ResourceNotFoundException {
-        characterService.deleteCharacter(userId, characterName);
+        characterService.deleteCharacter(username, characterName);
         return ResponseEntity.noContent().build();
     }
 }

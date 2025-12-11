@@ -131,17 +131,16 @@ public class AuthService {
         }
 
         String activeChar = login.activeCharacter();
-        ObjectId activeCharOid = null;
+        String activeCharOid = null;
         if (activeChar != null) {
             // Si el formato del ID es valido, dar un error directamente
             if (!ObjectId.isValid(activeChar)) {
                 throw new ResourceNotFoundException("Character", login.activeCharacter());
             }
-
-            activeCharOid = new ObjectId(activeChar);
+            ObjectId oid = new ObjectId(activeChar);
 
             // Validar que el personaje existe
-            Character character = charRepo.getCharacterById(activeCharOid);
+            Character character = charRepo.getCharacterById(oid);
             if (character == null) {
                 throw new ResourceNotFoundException("Character", login.activeCharacter());
             }
@@ -150,11 +149,13 @@ public class AuthService {
             if (user.getRole() != GlobalRole.ADMIN && !character.getOwnerId().equals(user.getUsername())) {
                 throw new AccessDeniedException("User not owner of character " + character.getOwnerId());
             }
+
+            activeCharOid = oid.toHexString();
         }
 
         // Generar JWT y RefreshToken
         String jwt = generateJwt(login.username(), user.getRole(), activeCharOid);
-        RefreshToken refreshToken = generateRefreshToken(login.username(), user.getRole());
+        RefreshToken refreshToken = generateRefreshToken(login.username(), user.getRole(), activeCharOid);
 
         log.debug("POST /auth/login created tokens JWT={} Refresh={}", jwt, refreshToken.uuid());
 
@@ -175,8 +176,8 @@ public class AuthService {
 
         // Usando el JWT de la peticion, se cambia el personaje activo
         // Esto implica generar un nuevo JWT
-        String jwt = generateJwt(authUser.username(), authUser.role(), characterId);
-        RefreshToken refreshToken = generateRefreshToken(authUser.username(), authUser.role());
+        String jwt = generateJwt(authUser.username(), authUser.role(), characterId.toHexString());
+        RefreshToken refreshToken = generateRefreshToken(authUser.username(), authUser.role(), characterId.toHexString());
 
         log.debug("POST /auth/login-character created tokens JWT={} Refresh={}", jwt, refreshToken.uuid());
 
@@ -193,15 +194,14 @@ public class AuthService {
             .findById(refreshToken)
             .orElseThrow(() -> new InvalidCredentialsException(InvalidCredentialsException.CredentialType.REFRESH_TOKEN, refreshToken));
 
-        log.debug("POST /auth/refresh found user=\"{}\" with Refresh={}", token.username(), refreshToken);
+        log.debug("POST /auth/refresh found user=\"{}\" with Refresh=\"{}\" activeChar=\"{}\"", token.username(), refreshToken, token.activeCharacter());
 
         // NOTA: si los usuarios se borran, también se eliminan sus tokens de
         // Redis. En caso de querer implementar la posibilidad de banear cuentas,
         // se debería comprobar aquí.
 
-        // TODO: como gestionamos aquí el personaje activo?
-        String newJwt = generateJwt(token.username(), token.role(), null);
-        RefreshToken newRefreshToken = generateRefreshToken(token.username(), token.role());
+        String newJwt = generateJwt(token.username(), token.role(), token.activeCharacter());
+        RefreshToken newRefreshToken = generateRefreshToken(token.username(), token.role(), token.activeCharacter());
 
         log.debug("POST /auth/refresh new tokens JWT={} Refresh={}", newJwt, newRefreshToken.uuid());
 
@@ -239,7 +239,12 @@ public class AuthService {
         log.debug("POST /users/{}/password changed for user=\"{}\"", user.getUsername(), user.getUsername());
 
         // Rotar refresh tokens
-        RefreshToken newRefreshToken = generateRefreshToken(user.getUsername(), user.getRole());
+        User.AuthUser authUser = getAuthUser();
+        RefreshToken newRefreshToken = generateRefreshToken(
+            user.getUsername(),
+            user.getRole(),
+            authUser.activeCharacter() == null ? null : authUser.activeCharacter().toHexString()
+        );
         log.debug("POST /users/{}/password new Refresh={}", user.getUsername(), newRefreshToken.uuid());
 
         return newRefreshToken;
@@ -319,27 +324,42 @@ public class AuthService {
         return resource.getOwnerId().equals(user.activeCharacter());
     }
 
+    public boolean isCharacterOwnerByName(String userId, String characterName, User.AuthUser user) throws ResourceNotFoundException {
+        if (!userRepo.existsById(userId)) {
+            throw new ResourceNotFoundException("User", userId);
+        }
+
+        Character c = charRepo.getCharacterByName(userId, characterName);
+        if (c == null) {
+            throw new ResourceNotFoundException("Character", characterName);
+        }
+
+        return c.getOwnerId().equals(user.username());
+    }
+
     // ==== GENERACIÓN DE TOKENS ===============================================
 
-    private String generateJwt(String username, GlobalRole role, @Nullable ObjectId activeCharacter) {
+    private String generateJwt(String username, GlobalRole role, @Nullable String activeCharacter) {
+        log.debug("JWT user=\"{}\" role=\"{}\" activeChar=\"{}\"", username, role, activeCharacter);
         return Jwts.builder()
             .subject(username)
             .issuedAt(Date.from(Instant.now()))
             .expiration(Date.from(Instant.now().plus(jwtTtl)))
             .notBefore(Date.from(Instant.now()))
             .claim(JWT_ROLE, role.toString())
-            .claim(JWT_ACTIVE_CHARACTER, (activeCharacter == null)? null : activeCharacter.toHexString())
+            .claim(JWT_ACTIVE_CHARACTER, activeCharacter)
             .signWith(keyPair.getPrivate(), Jwts.SIG.ES256)
             .compact();
     }
 
-    private RefreshToken generateRefreshToken(String username, GlobalRole role) {
+    private RefreshToken generateRefreshToken(String username, GlobalRole role, @Nullable String activeCharacter) {
         // Generar refresh token: en este caso es un UUID
         UUID uuid = UUID.randomUUID();
         RefreshToken refreshToken = new RefreshToken(
             uuid.toString(),
             username,
             role,
+            activeCharacter,
             refreshTtl.toSeconds()
         );
 
@@ -357,6 +377,7 @@ public class AuthService {
         refreshRepo.save(refreshToken);
         userRefreshRepo.save(userRefresh);
 
+        log.debug("RefreshToken id=\"{}\" user=\"{}\" activeChar=\"{}\"", uuid, username, activeCharacter);
         return refreshToken;
     }
 

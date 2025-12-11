@@ -46,6 +46,13 @@ también las variables del entorno):
 ./gradlew bootJar
 ```
 
+Los tests automatizados se ejecutan con el siguiente comando (requiere librería
+de Python `requests`):
+
+```bash
+python test/main.py
+```
+
 # Características
 
 - [ ] Perfiles de usuario con fichas de personaje
@@ -69,19 +76,20 @@ Usuarios y autenticación:
 
 | Verbo    | URL                                           | Descripción                                    | Autenticacion |
 |----------|-----------------------------------------------|------------------------------------------------|---------------|
-| `GET`    | `/users?search=xxx&page=0&count=10`           | Buscar por nombre de usuario                   | No            | Falta paginación
+| `GET`    | `/users?search=xxx&page=0&count=10`           | Buscar por nombre de usuario                   | No            |
 | `POST`   | `/users`                                      | Crear nuevo usuario                            | *No*          |
 | `GET`    | `/users/{userid}`                             | Consultar perfil de usuario                    | No            |
 | `DELETE` | `/users/{userid}`                             | Borrar usuario                                 | Si            |
-| `POST`   | `/users/{userid}/password`                    | Cambiar contraseña del usuario                 | Si            | Probar
-| `POST`   | `/users/{userid}/characters`                  | Crear personaje                                | Si            |
+| `GET`    | `/users/{userid}/characters`                  | Obtener personajes del usuario                 | No            |
 | `GET`    | `/users/{userid}/characters/{character-name}` | Consultar stats de personaje                   | No            |
+| `POST`   | `/users/{userid}/characters`                  | Crear personaje                                | Si            |
 | `PATCH`  | `/users/{userid}/characters/{character-name}` | Editar stats de personaje                      | Si            |
 | `DELETE` | `/users/{userid}/characters/{character-name}` | Borrar el personaje                            | Si            |
 | `POST`   | `/auth/login`                                 | Iniciar sesión como usuario                    | *No*          |
 | `POST`   | `/auth/character-login`                       | Iniciar sesión como un personaje               | Si            |
-| `POST`   | `/auth/logout`                                | Cierra sesión (ADMIN puede sobre otro usuario) | Si            |
 | `POST`   | `/auth/refresh`                               | Genera un nuevo token sin contraseña           | Si            |
+| `POST`   | `/auth/logout`                                | Cierra sesión (ADMIN puede sobre otro usuario) | Si            |
+| `POST`   | `/users/{userid}/password`                    | Cambiar contraseña del usuario                 | Si            |
 
 2 roles:
 
@@ -102,7 +110,16 @@ Este `USER`, directamente solo podrá:
 
 El resto de operaciones presentadas a continuación (personajes, _posts_,
 mensajes), se tendrán que realizar a través de un personaje. Entonces, el dueño
-de estos recursos realmente no es el usuario en sí, sino el personaje.
+de estos recursos realmente no es el usuario en sí, sino el personaje:
+
+-   **Usuario**: dueño de sí mismo y de sus personajes. Dueño de una _party_ si
+    es DM. Si se borra, se eliminan en cascada sus personajes, y se dará un
+    error si el usuario es DM de alguna _party_ (deberá transferirla a otro
+    usuario o borrarla primero).
+-   **Personaje**: dueño de sus posts, likes y comentarios. Puede mandar
+    mensajes en una _party_ si es miembro. Si se borra, sus posts, likes,
+    comentarios y mensajes se mantienen, pero debe marcarse como que su autor ha
+    sido borrado. También se le eliminará de las parties en las que es miembro.
 
 Contenido del JWT:
 
@@ -110,7 +127,6 @@ Contenido del JWT:
 - `exp` (`.expiration()`): fecha de caducidad
 - `nbf` (`.notBefore()`): no se puede usar antes de esta fecha
 - `iat` (`.issuedAt()`): fecha de emisión
-
 - `role`: `USER` o `ADMIN`
 - `act_ch`: identificador del personaje activo. Puede ser `null`
 

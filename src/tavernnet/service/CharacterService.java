@@ -1,9 +1,10 @@
 package tavernnet.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,15 +13,17 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import tavernnet.exception.DuplicatedResourceException;
+import tavernnet.exception.LimitException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Character;
 import tavernnet.repository.CharacterRepository;
 import tavernnet.repository.UserRepository;
 import tavernnet.utils.patch.JsonPatch;
 import tavernnet.utils.patch.JsonPatchOperation;
-import tavernnet.utils.patch.JsonPatchOperationType;
 import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 
 @Service
@@ -31,28 +34,23 @@ public class CharacterService {
     private final CharacterRepository charRepo;
     private final UserRepository userRepo;
     private final ObjectMapper mapper;
+    private final Validator validator;
 
     @Autowired
     public CharacterService(
         CharacterRepository charRepo,
         UserRepository userRepo,
-        ObjectMapper mapper
+        ObjectMapper mapper,
+        Validator validator
     ) {
         this.charRepo = charRepo;
         this.userRepo = userRepo;
         this.mapper = mapper;
-    }
-
-    /**
-     * @return Lista de todos los characters.
-     */
-    // TODO: parámetros para personalizar el algoritmo
-    // TODO: paginación
-    public Collection<Character> getCharacters() {
-        return charRepo.findAll();
+        this.validator = validator;
     }
 
     public Collection<Character> getCharactersByUser(String username) throws ResourceNotFoundException {
+        log.debug("GET /users/{}/characters", username);
         if (!userRepo.existsById(username)) {
             throw new ResourceNotFoundException("User", username);
         }
@@ -60,19 +58,26 @@ public class CharacterService {
     }
 
     /**
-     * @param userid Identificador del usuario.
+     * @param username Identificador del usuario.
      * @param characterName Nombre del personaje
      * @return El character que tiene el id especificado.
      * @throws ResourceNotFoundException Si el character no se encuentra.
      */
-    public @Valid Character getCharacter(@NotBlank String userid,
-                                         @NotBlank String characterName
+    public @Valid Character getCharacter(
+        String username,
+        String characterName
     ) throws ResourceNotFoundException {
-        @Valid Character character = charRepo
-            .getCharacterByName(userid, characterName);
+        log.debug("GET /users/{}/characters/{}", username, characterName);
+
+        if (!userRepo.existsById(username)) {
+            throw new ResourceNotFoundException("User", username);
+        }
+
+        Character character = charRepo.getCharacterByName(username, characterName);
         if (character == null) {
             throw new ResourceNotFoundException("Character", characterName);
         }
+
         return character;
     }
 
@@ -80,56 +85,98 @@ public class CharacterService {
      * @param newCharacter Contenido del nuevo personaje a crear.
      * @return Id del nuevo character creado.
      */
-    public String createCharacter(Character.CreationRequest newCharacter, String username) throws DuplicatedResourceException, ResourceNotFoundException {
+    public String createCharacter(
+        Character.CreationRequest newCharacter,
+        String username
+    ) throws DuplicatedResourceException, ResourceNotFoundException, LimitException {
+        log.debug("POST /users/{}/characters", username);
+
         // Comprobar que el usuario existe
         if (!userRepo.existsById(username)) {
             throw new ResourceNotFoundException("User", username);
         }
-
-        // TODO: limitar personajes a un maximo de 10 por usuario y evitar tener que hacer paginacion
 
         // El personaje debe ser nuevo
         if (charRepo.existsByName(username, newCharacter.name())) {
             throw new DuplicatedResourceException(newCharacter, "Character", newCharacter.name());
         }
 
+        // Comprobar que el usuario tiene menos del numero de personajes permitidos
+        if (charRepo.countUserCharacters(username) >= 10) {
+            log.debug("POST /users/{}/characters user has already 10 characters", username);
+            throw new LimitException("Cannot create more than 10 characters");
+        }
+
         Character realCharacter = charRepo.save(new Character(newCharacter, username));
-        log.info("Created character with id '{}'", realCharacter.getClass());
-        return realCharacter.getId().toHexString();
+        log.debug("POST /users/{}/characters id='{}'", username, realCharacter.getClass());
+        return realCharacter.id().toHexString();
     }
 
-    public Character updateCharacter(@NotBlank String username, @NotBlank String characterName, List<JsonPatchOperation> changes)
-        throws ResourceNotFoundException, JsonPatchFailedException {
+    public Character updateCharacter(
+        String username,
+        String characterName,
+        List<JsonPatchOperation> changes
+    ) throws ResourceNotFoundException, JsonPatchFailedException {
+        log.debug("PATCH /users/{}/characters/{}", username, characterName);
+
+        if (!userRepo.existsById(username)){
+            throw new ResourceNotFoundException("User", username);
+        }
+
         Character character = charRepo.getCharacterByName(username, characterName);
         if (character == null){
             throw new ResourceNotFoundException("Character", characterName);
         }
 
-        for(JsonPatchOperation operation: changes){
-            if( (operation.operation() != JsonPatchOperationType.REPLACE)
-                || operation.path().toString().contains("/stats") )
-                throw new JsonPatchFailedException(
-                    "Operation %s on %s %s forbidden".formatted(
-                        operation.operation().toString(),
-                        "Character", characterName));
+        // Comprobar que las operaciones estan permitidas
+        for (JsonPatchOperation operation : changes) {
+            Character.validatePatch(operation);
         }
 
-        JsonNode updated_node = JsonPatch.apply(changes, mapper.convertValue(
-            character, JsonNode.class));
-        Character updated = mapper.convertValue(updated_node, Character.class);
-        return charRepo.save(updated);
+        // Crear un objeto con los nuevos cambios
+        JsonNode updatedNode = JsonPatch.apply(
+            changes,
+            mapper.convertValue(character, JsonNode.class)
+        );
+        Character updated = mapper.convertValue(updatedNode, Character.class);
+        assert updated.id() == character.id() && updated.creation() == character.creation();
+        Character newCharacter = new Character(
+            character.id(), // conservar del original
+            updated.name(),
+            character.user(), // conservar del original
+            updated.biography(),
+            updated.race(),
+            updated.languages(),
+            character.creation(), // conservar del original
+            updated.alignment(),
+            updated.stats(),
+            updated.modifiers(),
+            updated.combat(),
+            updated.passive(),
+            updated.actions()
+        );
+
+        // Validar los campos manualmente
+        Set<ConstraintViolation<Character>> violations = validator.validate(updated);
+        if (!violations.isEmpty()) {
+            String msg = violations.stream()
+                .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                .collect(Collectors.joining(", "));
+            throw new JsonPatchFailedException("Invalid fields: " + msg);
+        }
+
+        // Se debe hacer asi o MongoDB tratara de insertarlo como un nuevo documento
+        return charRepo.save(newCharacter);
     }
 
-    public void deleteCharacter(@NotBlank String username, @NotBlank String characterName)
-        throws ResourceNotFoundException {
-        Character  deletedCharacter = charRepo.getCharacterByName(username, characterName);
+    public void deleteCharacter(
+        String username, String characterName
+    ) throws ResourceNotFoundException {
+        log.debug("DELETE /users/{}/characters/{}", username, characterName);
+        Character deletedCharacter = charRepo.getCharacterByName(username, characterName);
         if (deletedCharacter == null) {
             throw new ResourceNotFoundException("Character", characterName);
         }
-        charRepo.deleteCharacterById(deletedCharacter.getId());
-
+        charRepo.deleteCharacterById(deletedCharacter.id());
     }
-
-
 }
-

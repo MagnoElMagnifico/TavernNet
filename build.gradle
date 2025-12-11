@@ -37,8 +37,13 @@ sourceSets {
     test.java.srcDirs = ['test']
 }
 
+bootJar {
+    mainClass = 'tavernnet.Main'
+}
+
 dependencies {
     // Aplicaciones REST usando Spring. Usa Tomcat embebido como servidor
+    // NOTA: com.fasterxml.jackson para las anotaciones, tools.jackson para lo demas
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
     // Bases de datos: MongoDB y Redis
@@ -48,11 +53,6 @@ dependencies {
     // Anotaciones de validación de código
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // No se porque esto no aparece por defecto
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-
     // Live reloading tras compilar
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
@@ -60,5 +60,5 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
-    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
+    runtimeOnly 'io.jsonwebtoken:jjwt-gson:0.13.0'
 }

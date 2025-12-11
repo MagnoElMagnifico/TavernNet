@@ -2,11 +2,10 @@ package tavernnet.utils.patch;
 
 import tavernnet.utils.patch.exceptions.*;
 
-import com.fasterxml.jackson.core.JsonPointer;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.core.JsonPointer;
+import tools.jackson.databind.JsonNode;
 
 import java.util.List;
-import java.util.Optional;
 
 public class JsonPatch {
     public static JsonNode apply(List<JsonPatchOperation> patchOperations, JsonNode rootDocument) throws tavernnet.utils.patch.exceptions.JsonPatchFailedException {

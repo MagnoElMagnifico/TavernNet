@@ -1,80 +1,79 @@
 package tavernnet.model;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import tavernnet.utils.patch.JsonPatchOperation;
+import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 
 @Document(collection = "characters")
-public class Character implements Ownable {
+@NullMarked
+public record Character(
+    // TODO: esto se serializa como objeto y no como string
+    @Id ObjectId id,
+    @NotBlank @Size(max = 50, message = "Character name too long") String name,
+    @NotBlank String user,
+    @Nullable @Size(max = 1000, message = "Biography too long") String biography,
+    @NotBlank @Size(max = 50, message = "Race field too long") String race,
+    Collection<@NotBlank String> languages,
+    LocalDateTime creation,
+    @Valid Alignment alignment,
+    @Valid Stats stats,
+    @Valid Stats modifiers,
+    @Valid CombatStats combat,
+    @Valid PassiveStats passive,
+    Collection<@Valid Action> actions
+) implements Ownable {
 
-    // TODO: validacion
-
-    /** DTO para el POST de crear un personaje */
-    public record CreationRequest(
-        @NotBlank(message = "Name must be not null or blank")
+    public static Character defaultCharacter(
+        ObjectId id,
         String name,
-        @NotBlank(message = "User must be not null or blank")
-        String user,
+        String username,
         String biography,
         String race,
-        Collection<String> languages,
-        String alignment,
-        Stats stats,
-        Collection<Action> actions
-    ) {}
-
-    public record Response (
-        String id,
-        String name,
-        String user,
-        String biography,
-        String race,
-        Collection<String> languages,
-        String alignment,
-        Stats stats,
-        Collection<Action> actions,
-        LocalDateTime date
-    ) {}
-
-    @Id
-    private ObjectId id;
-    private String name;
-    private String user;
-    private String biography;
-    private String race;
-    private Collection<String> languages;
-    private String alignment;
-    private Stats stats;
-    private Collection<Action> actions;
-    private LocalDateTime date;
-
-    public Character(){}
-
-    public Character(ObjectId id, String name, String user, String biography,
-                     String race, Collection<String> languages, String alignment,
-                     Stats stats, Collection<Action> actions, LocalDateTime date) {
-        this.id = id;
-        this.name = name;
-        this.user = user;
-        this.biography = biography;
-        this.race = race;
-        this.languages = languages;
-        this.alignment = alignment;
-        this.stats = stats;
-        this.actions = actions;
-        this.date = date;
+        Collection<String> languages
+    ) {
+        return new Character(
+            id,
+            name,
+            username,
+            biography,
+            race,
+            languages,
+            LocalDateTime.now(),
+            Alignment.TRUE_NEUTRAL,
+            Stats.defaultGeneralStats(),
+            Stats.defaultModifiers(),
+            CombatStats.defaultStats(),
+            PassiveStats.defaultStats(),
+            Action.defaultActions()
+        );
     }
 
-    /** Creacion de un personaje por el usuario */
-    public Character(CreationRequest character, String author) {
-        // Dejar el ID a null hará que la base de datos asigne uno automáticamente
-        this(null, character.name, author, character.biography, character.race,
-            character.languages, character.alignment, character.stats,
-            character.actions, LocalDateTime.now());
+    public Character(CreationRequest request, String username) {
+        this(
+            null, // desconocido hasta insertar en la DB
+            request.name,
+            username,
+            request.biography,
+            request.race,
+            request.languages,
+            LocalDateTime.now(),
+            request.alignment,
+            request.general == null? Stats.defaultGeneralStats() : request.general,
+            request.general == null? Stats.defaultModifiers() : Stats.asModifiers(request.general),
+            request.combat == null? CombatStats.defaultStats() : request.combat,
+            request.passive == null? PassiveStats.defaultStats() : request.passive,
+            request.actions
+        );
     }
 
     @Override
@@ -82,83 +81,119 @@ public class Character implements Ownable {
         return user;
     }
 
-    public ObjectId getId() {
-        return id;
+    public static void validatePatch(JsonPatchOperation op) {
+        if (op == null || op.path() == null) {
+            return;
+        }
+
+        switch (op.path().toString()) {
+            case "/id", "/creation", "/user" -> throw new JsonPatchFailedException(
+                "Changing ID, user or creation date is forbidden"
+            );
+        }
     }
 
-    public void setId(ObjectId id) {
-        this.id = id;
+    // ==== TIPOS DE DATOS ASOCIADOS ===========================================
+
+    public enum Alignment {
+        LAWFUL_GOOD,
+        LAWFUL_NEUTRAL,
+        LAWFUL_EVIL,
+        NEUTRAL_GOOD,
+        TRUE_NEUTRAL,
+        NEUTRAL_EVIL,
+        CHAOTIC_GOOD,
+        CHAOTIC_NEUTRAL,
+        CHAOTIC_EVIL,
     }
 
-    public String getUser() {
-        return user;
+    public record Stats (
+        @Min(value = -10) @Max(value = 30) int constitution,
+        @Min(value = -10) @Max(value = 30) int dexterity,
+        @Min(value = -10) @Max(value = 30) int strength,
+        @Min(value = -10) @Max(value = 30) int wisdom,
+        @Min(value = -10) @Max(value = 30) int charisma
+    ) {
+
+        // Valores por defecto
+        public static Stats defaultGeneralStats() {
+            return new Stats(10, 10, 10, 10, 10);
+        }
+
+        // Calcular un modificador a partir de un valor según las reglas estándar
+        public static int modifierOf(int value) {
+            //                        3 4/5 6/7 8/9 10/11 12/13 14/15 16/17 18/19  20
+            final int[] modifiers = {-4, -3, -2, -1,   +0,   +1,   +2,   +3,   +4, +5};
+            int index = (int) Math.floor(((float) (value - 2) / 2.0f));
+            return modifiers[Math.clamp(index, 0, modifiers.length - 1)];
+        }
+
+        // Obtiene los modificadores de las estadísticas según las reglas estándar
+        public static Stats asModifiers(Stats general) {
+            return new Stats(
+                modifierOf(general.constitution),
+                modifierOf(general.dexterity),
+                modifierOf(general.strength),
+                modifierOf(general.wisdom),
+                modifierOf(general.charisma)
+            );
+        }
+
+        public static Stats defaultModifiers() {
+            return new Stats(0, 0, 0, 0, 0);
+        }
     }
 
-    public void setUser(String user) {
-        this.user = user;
+    public record CombatStats (
+        @Min(value = 10) @Max(value = 30) int ac,
+        @Min(value = -20) @Max(value = 1000) int hp,
+        @Min(value = 0) @Max(value = 100) int speed,
+        @Min(value = -10) @Max(value = 15) int initiative
+    ) {
+        public static CombatStats defaultStats() {
+            return new CombatStats(12, 10, 30, 0);
+        }
     }
 
-    public String getRace() {
-        return race;
+    public record PassiveStats (
+        @Min(value = -10) @Max(value = 15) int perception
+    ) {
+        public static PassiveStats defaultStats() {
+            return new PassiveStats(12);
+        }
     }
 
-    public void setRace(String race) {
-        this.race = race;
+    public record Action (
+        @NotBlank @Size(max = 50, message = "Action name too long") String name,
+        @NotBlank @Size(max = 1000, message = "Action description too long") String description,
+        @Min(value = 0) @Max(value = 1000) int range,
+        @Min(value = -20) @Max(value = 20) int toHit,
+        @Valid DiceSpec damageDice,
+        @NotBlank String damageType,
+        @Valid Type type
+    ) {
+        public enum Type {
+            MELEE, RANGED, MAGIC
+        }
+
+        public static Collection<Action> defaultActions() {
+            return List.of(
+                new Action("Unarmed strike", "Regular attack with no weapons", 5, 0, DiceSpec.of(1, 6), "bludgeoning", Type.MELEE)
+            );
+        }
     }
 
-    public Collection<String> getLanguages() {
-        return languages;
-    }
+    // ==== DTOs ===============================================================
 
-    public void setLanguages(Collection<String> languages) {
-        this.languages = languages;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getBiography() {
-        return biography;
-    }
-
-    public void setBiography(String biography) {
-        this.biography = biography;
-    }
-
-    public String getAlignment() {
-        return alignment;
-    }
-
-    public void setAlignment(String alignment) {
-        this.alignment = alignment;
-    }
-
-    public Stats getStats() {
-        return stats;
-    }
-
-    public void setStats(Stats stats) {
-        this.stats = stats;
-    }
-
-    public Collection<Action> getActions() {
-        return actions;
-    }
-
-    public void setActions(Collection<Action> actions) {
-        this.actions = actions;
-    }
-
-    public LocalDateTime getDate() {
-        return date;
-    }
-
-    public void setDate(LocalDateTime date) {
-        this.date = date;
-    }
+    public record CreationRequest (
+        @NotBlank @Size(max = 50, message = "Character name too long") String name,
+        @Nullable @Size(max = 1000, message = "Biography too long") String biography,
+        @NotBlank @Size(max = 50, message = "Race field too long") String race,
+        @NotNull Collection<@NotBlank String> languages,
+        @Valid Alignment alignment,
+        @Valid @Nullable Stats general,
+        @Valid @Nullable CombatStats combat,
+        @Valid @Nullable PassiveStats passive,
+        @NotNull Collection<@Valid Action> actions
+    ) {}
 }

@@ -21,7 +21,9 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.InvalidCredentialsException;
+import tavernnet.exception.LimitException;
 import tavernnet.exception.ResourceNotFoundException;
+import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -258,6 +260,28 @@ public class ErrorController {
         problem.setTitle("%s already exists".formatted(ex.getType()));
         problem.setDetail(ex.getMessage());
         problem.setType(getType("duplicated-resource"));
+        return ErrorResponse.builder(ex, problem).build();
+    }
+
+    // Limites sobrepasados
+    @ExceptionHandler(LimitException.class)
+    public ErrorResponse handleLimit(LimitException ex, HttpServletRequest request) {
+        log.warn("Limit exceeded {}: {}", request.getRequestURI(), ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setTitle("Limit exceeded");
+        problem.setDetail(ex.getMessage());
+        problem.setType(getType("limit-exceeded"));
+        return ErrorResponse.builder(ex, problem).build();
+    }
+
+    // JSON PATCH invalido
+    @ExceptionHandler(JsonPatchFailedException.class)
+    public ErrorResponse handleLimit(JsonPatchFailedException ex, HttpServletRequest request) {
+        log.warn("Invalid JSON PATCH {}: {}", request.getRequestURI(), ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_CONTENT);
+        problem.setTitle("Invalid JSON PATCH");
+        problem.setDetail(ex.getMessage());
+        problem.setType(getType("limit-exceeded"));
         return ErrorResponse.builder(ex, problem).build();
     }
 }

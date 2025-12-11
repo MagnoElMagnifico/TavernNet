@@ -2,6 +2,7 @@ package tavernnet.repository;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -15,10 +16,10 @@ import tavernnet.model.Character;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
 @Component
+@NullMarked
 public class DatabaseInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseInitializer.class);
@@ -60,14 +61,14 @@ public class DatabaseInitializer implements CommandLineRunner {
 
         User marcos = new User(
             "marcos",
-            passwordEncoder.encode("1234"),
+            Objects.requireNonNull(passwordEncoder.encode("1234")),
             GlobalRole.ADMIN,
             LocalDateTime.now()
         );
 
         User jeremias = new User(
             "jeremias",
-            passwordEncoder.encode("password"),
+            Objects.requireNonNull(passwordEncoder.encode("password")),
             GlobalRole.USER,
             LocalDateTime.now()
         );
@@ -79,44 +80,17 @@ public class DatabaseInitializer implements CommandLineRunner {
         // ==== PERSONAJES =====================================================
 
         ObjectId zarionId = new ObjectId();
-        Character zarion = new Character(
+        Character zarion = Character.defaultCharacter(
             zarionId,
             "Zarion",
             "jeremias",
             "Esta es la biografia del personaje de Jeremias",
             "human",
-            Arrays.asList("Common", "Draconic", "Elfic"),
-            "lawful good",
-            new Stats(
-                Map.of(
-                    "CON", 10,
-                    "STR", 10,
-                    "DEX", 10,
-                    "WIS", 10,
-                    "CHA", 10
-                ),
-                Map.of(
-                    "CON", 1,
-                    "STR", 1,
-                    "DEX", 1,
-                    "WIS", 1,
-                    "CHA", 1
-                ),
-                Map.of(
-                    "perception", 12
-                ),
-                Map.of(
-                    "HP", 8,
-                    "AC", 12,
-                    "speed", 30,
-                    "iniciative", 2
-                )
-            ),
-            List.of(),
-            LocalDateTime.now()
+            Arrays.asList("Common", "Draconic", "Elfic")
         );
 
         ObjectId eltonId = new ObjectId();
+        Character.Stats eltonStats = new Character.Stats(8 , 13, 15, 12, 9);
         Character elton = new Character(
             eltonId,
             "Elton",
@@ -124,34 +98,13 @@ public class DatabaseInitializer implements CommandLineRunner {
             "Esta es la biografia del segundo personaje de Jeremias",
             "elf",
             Arrays.asList("Common", "Elfic", "Undercommon", "Abisal"),
-            "lawful good",
-            new Stats(
-                Map.of(
-                    "CON", 8,
-                    "STR", 13,
-                    "DEX", 15,
-                    "WIS", 12,
-                    "CHA", 9
-                ),
-                Map.of(
-                    "CON", -2,
-                    "STR", 3,
-                    "DEX", 4,
-                    "WIS", 1,
-                    "CHA", 0
-                ),
-                Map.of(
-                    "perception", 14
-                ),
-                Map.of(
-                    "HP", 15,
-                    "AC", 13,
-                    "speed", 40,
-                    "iniciative", 5
-                )
-            ),
-            List.of(),
-            LocalDateTime.now()
+            LocalDateTime.now(),
+            Character.Alignment.CHAOTIC_EVIL,
+            eltonStats,
+            Character.Stats.asModifiers(eltonStats),
+            new Character.CombatStats(14, 32, 40, +3),
+            new Character.PassiveStats(15),
+            Character.Action.defaultActions()
         );
 
         mongo.insert(zarion);

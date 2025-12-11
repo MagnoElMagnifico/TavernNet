@@ -13,31 +13,27 @@ import tavernnet.model.Character;
 @Repository
 @NullMarked
 public interface CharacterRepository extends MongoRepository<Character, ObjectId> {
-    /**
-     * @return Lista de todos los posts en la base de datos.
-     */
-    @Query("{}")
-    Collection<Character> getCharacters();
-
-    @Query("{ 'user': '?0' }")
+    @Query("{ 'user': ?0 }")
     Collection<Character> getCharactersByUser(String username);
 
     @Query(value = "{ 'user': ?0, 'name': ?1 }", exists = true)
     boolean existsByName(String username, String characterName);
 
-    @Query("{ 'user': '?0', 'name': ?1 }")
+    @Query("{ 'user': ?0, 'name': ?1 }")
     Character getCharacterByName(String username, String characterName);
 
     /**
      * @param characterid Id del personaje del que obtener los datos.
      * @return Character que tiene el ID dado.
      */
-    @Query("{ '_id': '?0' }")
+    @Query("{ '_id': ?0 }")
     Character getCharacterById(ObjectId characterid);
 
-
-    @Query(value = "{ '_id': '?0' }", delete = true)
+    @Query(value = "{ '_id': ?0 }", delete = true)
     Character deleteCharacterById(ObjectId characterid);
+
+    @Query(value = "{ 'user': ?0 }", count = true)
+    int countUserCharacters(String username);
 
     /**
      * @param character Guarda el personaje en la base de datos.
