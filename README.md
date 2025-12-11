@@ -9,42 +9,36 @@ con atributos, clases y estadísticas. La aplicación tendrá un sistema de _pos
 
 # Ejecutar
 
-Primero se debe generar un certificado válido para firmar tokens de
-autenticación JWT, que use curva elíptica:
+Para una versión de producción:
 
 ```bash
-# Generar clave privada ECC
-openssl ecparam -name prime256v1 -genkey -noout -out jwt_ec.key.pem
+docker compose build
+docker compose up -d
 
-# Generar certificado autofirmado (válido 10 años)
-openssl req -new -x509 -key jwt_ec.key.pem -sha256 -days 3650 -subj "/CN=jwt" -out jwt_ec.crt.pem
+# Si se quiere ver el estado:
+docker logs tavernnet-server-1
 
-# Empaquetar en un p12
-openssl pkcs12 -export \
-  -inkey jwt_ec.key.pem \
-  -in jwt_ec.crt.pem \
-  -name jwt \
-  -out keys.p12 \
-  -passout pass:XXXX \
-  -keypbe AES-256-CBC \
-  -certpbe AES-256-CBC \
-  -macalg sha256 \
-  -maciter \
-  -iter 10000
+# Terminar la ejecución (los datos se conservan):
+docker compose down
 ```
 
-Guarda el archivo `keys.p12` generado en `resources` con ese mismo nombre, y
-luego configura las contraseñas como variables del entorno en un archivo `.env`.
+Esta versión requiere generar las claves y certificados para la firma y
+verificación de los JWT en un directorio `certs`. Se deberán configurar las
+variables de entorno apropiadamente con las contraseñas de estos archivos.
 
-Luego, para ejecutar una versión de desarrollo (con _live-reloading_) ejecuta el
-script `./rundev.sh` y usa `./gradlew build` para recompilar.
-
-Para la versión de producción, usa el `.jar` generado con el comando (configura
-también las variables del entorno):
+Para la versión de desarrollo, con _live-reloading_ sobre el código:
 
 ```bash
-./gradlew bootJar
+docker compose -f compose.dev.yaml build
+docker compose -f compose.dev.yaml up -d
+# Para ver los logs
+docker attach tavernnet-server-1
+# Y para terminar la ejecución:
+docker compose down
 ```
+
+Si no existen las claves y certificados, se generarán automáticamente a la hora
+de crear la imagen.
 
 Los tests automatizados se ejecutan con el siguiente comando (requiere librería
 de Python `requests`):

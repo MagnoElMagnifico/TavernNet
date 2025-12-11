@@ -49,12 +49,12 @@ public class CharacterService {
         this.validator = validator;
     }
 
-    public Collection<Character> getCharactersByUser(String username) throws ResourceNotFoundException {
+    public Collection<Character.PublicCharacter> getCharactersByUser(String username) throws ResourceNotFoundException {
         log.debug("GET /users/{}/characters", username);
         if (!userRepo.existsById(username)) {
             throw new ResourceNotFoundException("User", username);
         }
-        return charRepo.getCharactersByUser(username);
+        return charRepo.getCharactersByUser(username).stream().map(Character.PublicCharacter::new).toList();
     }
 
     /**
@@ -63,7 +63,7 @@ public class CharacterService {
      * @return El character que tiene el id especificado.
      * @throws ResourceNotFoundException Si el character no se encuentra.
      */
-    public @Valid Character getCharacter(
+    public Character.PublicCharacter getCharacter(
         String username,
         String characterName
     ) throws ResourceNotFoundException {
@@ -78,7 +78,7 @@ public class CharacterService {
             throw new ResourceNotFoundException("Character", characterName);
         }
 
-        return character;
+        return new Character.PublicCharacter(character);
     }
 
     /**
@@ -112,7 +112,7 @@ public class CharacterService {
         return realCharacter.id().toHexString();
     }
 
-    public Character updateCharacter(
+    public Character.PublicCharacter updateCharacter(
         String username,
         String characterName,
         List<JsonPatchOperation> changes
@@ -124,7 +124,7 @@ public class CharacterService {
         }
 
         Character character = charRepo.getCharacterByName(username, characterName);
-        if (character == null){
+        if (character == null) {
             throw new ResourceNotFoundException("Character", characterName);
         }
 
@@ -166,7 +166,8 @@ public class CharacterService {
         }
 
         // Se debe hacer asi o MongoDB tratara de insertarlo como un nuevo documento
-        return charRepo.save(newCharacter);
+        charRepo.save(newCharacter);
+        return new Character.PublicCharacter(newCharacter);
     }
 
     public void deleteCharacter(

@@ -55,7 +55,7 @@ NEW_USER_CHAR_NAME2 = 'Other Test Character'
 NEW_PASSWD = 'new&secure_passd1234'
 
 ADMIN_USER = User('marcos', '1234', None)
-CHAR_EXISTS = Character('693a939bbbd81020255f01e3', 'Zarion')
+CHAR_EXISTS = Character('', 'Zarion') # No se sabe al inicio, se necesita mirar en la BD
 USER_EXISTS = User('jeremias', 'password', CHAR_EXISTS)
 
 USERNAME_NOT_EXISTS = 'user-not-found'
@@ -154,6 +154,16 @@ def test_setup() -> User:
     # Intentar obtener el ID del personaje desde la cabecera Location
     char_id = r.headers.get('location').split('/')[-1]
     user.character = Character(char_id, NEW_USER_CHAR_NAME)
+
+    # Buscar el ID de un personaje que exista
+    global CHAR_EXISTS
+    assert USER_EXISTS.character is not None
+    assert USER_EXISTS.character.name == CHAR_EXISTS.name
+    r = requests.get(f'{SITE}/users/{USER_EXISTS.username}/characters/{USER_EXISTS.character.name}')
+    check(r, HTTPStatus.OK)
+    CHAR_EXISTS.id = r.json().get('id')
+    assert USER_EXISTS.character.id == CHAR_EXISTS.id
+
     return user
 
 
@@ -794,7 +804,7 @@ def test_auth_characters(login: LoginUser, headers: dict[str,str]):
     # TODO: comprobar que pasa con los posts/comentarios/parties del personaje
     # - Posts/comentarios: aún existen, pero el autor aparece como borrado/null/...
     # - Parties: salirse de la party
-
+    char_name = login.character.name
 
 def test_auth_user(login: LoginUser, headers: dict[str,str]):
     # BORRAR USUARIO

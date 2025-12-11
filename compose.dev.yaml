@@ -6,14 +6,18 @@ services:
     image: redis:alpine
 
   server:
-    image: tavernnet:latest
+    image: tavernnet-dev:latest
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
-      - "8000:8080"
+      - "8080:8080"
     volumes:
+      - ./src:/tavernnet/src:ro
+      - ./res:/tavernnet/res:ro
+      - ./test:/tavernnet/test:ro
       - ./certs:/tavernnet/certs:ro
     environment:
+      - SPRING_DEVTOOLS_RESTART_ENABLED=true
       - KEYSTORE_PASSWORD=abcd1234
       - KEYSTORE_PRIVATE_PASSWORD=abcd1234

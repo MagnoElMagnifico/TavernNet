@@ -33,8 +33,7 @@ repositories {
 // Simplificar estructura de carpetas
 sourceSets {
     main.java.srcDirs = ['src']
-    main.resources.srcDirs = ['resources']
-    test.java.srcDirs = ['test']
+    main.resources.srcDirs = ['res']
 }
 
 bootJar {

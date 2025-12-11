@@ -1,0 +1,34 @@
+FROM amazoncorretto:21.0.9-alpine
+WORKDIR /tavernnet
+
+# Dependencias necesarias para generar certificados y otros comandos de depuración
+RUN apk update && apk add openssl curl neovim python3 py3-requests
+
+# Copiar Gradle wrapper y archivos de configuración
+COPY gradlew build.gradle settings.gradle ./
+COPY gradle ./gradle
+# Ejecutar gradlew para que traiga sus dependencias de internet
+RUN chmod +x ./gradlew && ./gradlew --version
+
+# Generar certificado de desarrollo en build
+RUN mkdir -p /tavernnet/certs && \
+    if [ ! -f /tavernnet/certs/keys.p12 ]; then \
+        echo "[DEV] Generando certificados para desarrollo..."; \
+        openssl ecparam -name prime256v1 -genkey -noout -out /tavernnet/certs/dev.key.pem; \
+        openssl req -new -x509 -sha256 -days 3650 \
+            -subj "/CN=dev-jwt" \
+            -key /tavernnet/certs/dev.key.pem \
+            -out /tavernnet/certs/dev.crt.pem; \
+        openssl pkcs12 -export \
+            -name jwt \
+            -passout pass:password \
+            -in /tavernnet/certs/dev.crt.pem \
+            -inkey /tavernnet/certs/dev.key.pem \
+            -out /tavernnet/certs/keys.p12; \
+        echo "[DEV] Certificado generado en build."; \
+    else \
+        echo "[DEV] Certificado ya existente, no se genera uno nuevo."; \
+    fi
+
+EXPOSE 8080
+ENTRYPOINT ["./gradlew", "bootRun"]

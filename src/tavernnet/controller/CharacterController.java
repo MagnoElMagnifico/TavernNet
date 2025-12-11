@@ -11,7 +11,6 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 
 import tavernnet.exception.*;
 import tavernnet.exception.ResourceNotFoundException;
-import tavernnet.model.Party;
 import tavernnet.service.CharacterService;
 import tavernnet.model.Character;
 import tavernnet.utils.patch.JsonPatchOperation;
@@ -34,7 +33,7 @@ public class CharacterController {
     // Servicio para obtener todos los personajes de un usuario
     @GetMapping("{userid}/characters")
     @PreAuthorize("true")
-    public Collection<Character> getCharacters(
+    public Collection<Character.PublicCharacter> getCharacters(
         @PathVariable("userid") @NotBlank String id
     ) throws ResourceNotFoundException {
         return characterService.getCharactersByUser(id);
@@ -72,7 +71,7 @@ public class CharacterController {
      */
     @GetMapping("{userid}/characters/{characterName}")
     @PreAuthorize("true")
-    public Character getCharacter(
+    public Character.PublicCharacter getCharacter(
         @PathVariable("userid") @NotBlank String userId,
         @PathVariable("characterName") @NotBlank String characterName
     ) throws ResourceNotFoundException {
@@ -81,7 +80,7 @@ public class CharacterController {
 
     @PatchMapping("{userid}/characters/{characterName}")
     @PreAuthorize("hasRole('ADMIN') or @auth.isCharacterOwnerByName(#username, #characterName, principal)")
-    public Character updateCharacter(
+    public Character.PublicCharacter updateCharacter(
         @PathVariable("userid") @NotBlank String username,
         @PathVariable("characterName") @NotBlank String characterName,
         @RequestBody @Valid List<@Valid JsonPatchOperation> changes

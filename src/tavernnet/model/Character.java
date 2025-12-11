@@ -185,6 +185,8 @@ public record Character(
 
     // ==== DTOs ===============================================================
 
+    // TODO: usar JsonView en su lugar
+
     public record CreationRequest (
         @NotBlank @Size(max = 50, message = "Character name too long") String name,
         @Nullable @Size(max = 1000, message = "Biography too long") String biography,
@@ -196,4 +198,38 @@ public record Character(
         @Valid @Nullable PassiveStats passive,
         @NotNull Collection<@Valid Action> actions
     ) {}
+
+    public record PublicCharacter (
+        @NotBlank String id,
+        @NotBlank @Size(max = 50, message = "Character name too long") String name,
+        @NotBlank String user,
+        @Nullable @Size(max = 1000, message = "Biography too long") String biography,
+        @NotBlank @Size(max = 50, message = "Race field too long") String race,
+        Collection<@NotBlank String> languages,
+        LocalDateTime creation,
+        @Valid Alignment alignment,
+        @Valid Stats stats,
+        @Valid Stats modifiers,
+        @Valid CombatStats combat,
+        @Valid PassiveStats passive,
+        Collection<@Valid Action> actions
+    ) {
+        public PublicCharacter(Character character) {
+            this(
+                character.id.toHexString(),
+                character.name,
+                character.user,
+                character.biography,
+                character.race,
+                character.languages,
+                character.creation,
+                character.alignment,
+                character.stats,
+                character.modifiers,
+                character.combat,
+                character.passive,
+                character.actions
+            );
+        }
+    }
 }
