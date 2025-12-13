@@ -10,14 +10,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      args:
+        KEYSTORE_PASSWORD: abcd1234
+        KEYSTORE_PRIVATE_PASSWORD: abcd1234
     ports:
       - "8080:8080"
     volumes:
       - ./src:/tavernnet/src:ro
       - ./res:/tavernnet/res:ro
       - ./test:/tavernnet/test:ro
-      - ./certs:/tavernnet/certs:ro
     environment:
       - SPRING_DEVTOOLS_RESTART_ENABLED=true
+      - COLORTERM=truecolor
+      - TERM=xterm-256color
       - KEYSTORE_PASSWORD=abcd1234
       - KEYSTORE_PRIVATE_PASSWORD=abcd1234

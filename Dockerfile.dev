@@ -2,33 +2,37 @@ FROM amazoncorretto:21.0.9-alpine
 WORKDIR /tavernnet
 
 # Dependencias necesarias para generar certificados y otros comandos de depuración
-RUN apk update && apk add openssl curl helix python3 py3-requests
+RUN apk update && apk add openssl curl helix helix-tree-sitter-vendor python3 py3-requests;
 
 # Copiar Gradle wrapper y archivos de configuración
 COPY gradlew build.gradle settings.gradle ./
 COPY gradle ./gradle
 # Ejecutar gradlew para que traiga sus dependencias de internet
-RUN chmod +x ./gradlew && ./gradlew --version
+RUN chmod +x ./gradlew && ./gradlew --version;
+
+# Argumentos de build
+ARG KEYSTORE_PASSWORD
+ARG KEYSTORE_PRIVATE_PASSWORD
 
 # Generar certificado de desarrollo en build
-RUN mkdir -p /tavernnet/certs && \
-    if [ ! -f /tavernnet/certs/keys.p12 ]; then \
-        echo "[DEV] Generando certificados para desarrollo..."; \
-        openssl ecparam -name prime256v1 -genkey -noout -out /tavernnet/certs/dev.key.pem; \
-        openssl req -new -x509 -sha256 -days 3650 \
-            -subj "/CN=dev-jwt" \
-            -key /tavernnet/certs/dev.key.pem \
-            -out /tavernnet/certs/dev.crt.pem; \
-        openssl pkcs12 -export \
-            -name jwt \
-            -passout pass:password \
-            -in /tavernnet/certs/dev.crt.pem \
-            -inkey /tavernnet/certs/dev.key.pem \
-            -out /tavernnet/certs/keys.p12; \
-        echo "[DEV] Certificado generado en build."; \
-    else \
-        echo "[DEV] Certificado ya existente, no se genera uno nuevo."; \
-    fi
+RUN mkdir -p /tavernnet/certs; \
+    openssl ecparam -name prime256v1 -genkey | \
+        openssl ec -aes256 \
+            -passout pass:${KEYSTORE_PRIVATE_PASSWORD} \
+            -out /tavernnet/certs/dev.key.pem; \
+    openssl req -new -x509 -sha256 -days 3650 \
+        -subj "/CN=dev-jwt" \
+        -key /tavernnet/certs/dev.key.pem \
+        -passin pass:${KEYSTORE_PRIVATE_PASSWORD} \
+        -out /tavernnet/certs/dev.crt.pem; \
+    openssl pkcs12 -export \
+        -name jwt \
+        -in /tavernnet/certs/dev.crt.pem \
+        -inkey /tavernnet/certs/dev.key.pem \
+        -passin pass:${KEYSTORE_PRIVATE_PASSWORD} \
+        -passout pass:${KEYSTORE_PASSWORD} \
+        -out /tavernnet/certs/keys.p12;
 
 EXPOSE 8080
-ENTRYPOINT ["./gradlew", "bootRun"]
+# Arrancar un demonio para compilar más rápido y otro para ejecutar.
+ENTRYPOINT ["sh", "-c", "./gradlew build && ./gradlew --no-daemon bootRun"]
