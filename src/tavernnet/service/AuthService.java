@@ -28,6 +28,7 @@ import tavernnet.repository.CharacterRepository;
 import tavernnet.repository.RefreshTokenRepository;
 import tavernnet.repository.UserRefreshTokenRepository;
 import tavernnet.repository.UserRepository;
+import tavernnet.utils.Utils;
 
 import java.security.KeyPair;
 import java.time.Duration;
@@ -166,7 +167,7 @@ public class AuthService {
     }
 
     public LoginResponse loginCharacter(ObjectId characterId) throws ResourceNotFoundException, InvalidCredentialsException {
-        User.AuthUser authUser = getAuthUser();
+        User.AuthUser authUser = Utils.getAuthUser();
         log.debug("POST /auth/login-character for user=\"{}\"", authUser.username());
 
         // No es necesario verificar que el personaje existe porque ya se hace al validar los permisos
@@ -212,7 +213,7 @@ public class AuthService {
     }
 
     public void logout() throws InvalidCredentialsException {
-        User.AuthUser user = getAuthUser();
+        User.AuthUser user = Utils.getAuthUser();
         log.debug("POST /auth/logout user=\"{}\"", user.username());
 
         // Invalidar tokens del usuario
@@ -239,7 +240,7 @@ public class AuthService {
         log.debug("POST /users/{}/password changed for user=\"{}\"", user.getUsername(), user.getUsername());
 
         // Rotar refresh tokens
-        User.AuthUser authUser = getAuthUser();
+        User.AuthUser authUser = Utils.getAuthUser();
         RefreshToken newRefreshToken = generateRefreshToken(
             user.getUsername(),
             user.getRole(),
@@ -392,18 +393,4 @@ public class AuthService {
             userRefreshRepo.deleteById(urt.username());
         });
     }
-
-    private static User.AuthUser getAuthUser() throws InvalidCredentialsException {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        // Esto no debería ejecutarse nunca si los métodos del controlador están
-        // bien anotados con los permisos.
-        if (auth == null || auth.getPrincipal() == null) {
-            // Lanzar esta excepción para que el status sea 401
-            throw new InvalidCredentialsException(InvalidCredentialsException.CredentialType.JWT, "<empty>");
-        }
-
-        return (User.AuthUser) auth.getPrincipal();
-    }
-
 }

@@ -1,21 +1,25 @@
 package tavernnet.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
+import tavernnet.exception.InvalidCredentialsException;
+import tavernnet.exception.NoCharacterSelectedException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Comment;
 import tavernnet.model.Post;
 import tavernnet.model.PostView;
 import tavernnet.service.PostService;
+import tavernnet.utils.Utils;
 import tavernnet.utils.ValidObjectId;
 
-import java.util.Collection;
+import java.util.List;
 
 @RestController
 @RequestMapping("posts")
@@ -32,11 +36,24 @@ public class PostController {
      * <code>GET /posts</code>
      * @return <code>200 OK</code> con la lista de posts.
      */
-    // TODO: parámetros para personalizar el algoritmo
-    // TODO: paginación
     @GetMapping
-    public Collection<PostView.PostResponse> getPosts() {
-        return posts.getPosts();
+    public List<PostView> getPosts(
+        @RequestParam(value = "search", required = false, defaultValue = "")
+        String search,
+
+        @RequestParam(value = "author", required = false, defaultValue = "")
+        String author,
+
+        @RequestParam(value = "page", required = false, defaultValue = "0")
+        @Min(value = 0, message = "Minimum page is 0")
+        int page,
+
+        @RequestParam(value = "count", required = false, defaultValue = "0")
+        @Min(value = 0, message = "Minimum page is 0")
+        @Max(value = 1000, message = "Minimum page is 0")
+        int count
+    ) {
+        return posts.getPosts(search, author, page, count);
     }
 
     /**
@@ -45,24 +62,9 @@ public class PostController {
      * @return <code>201 Created</code> en éxito.
      */
     @PostMapping
-    public ResponseEntity<Void> createPost(
-        @RequestBody @Valid
-        Post.PostRequest newPost,
-        // TODO: borrar cuando se implemente autenticacion
-        @RequestParam(value = "author", required = true)
-        @ValidObjectId(message = "Invalid character id author of the post")
-        ObjectId characterId
-    ) throws ResourceNotFoundException {
-        ObjectId newId = posts.createPost(newPost, characterId);
-
-        var url = MvcUriComponentsBuilder.fromMethodName(
-                PostController.class,
-                "getPost",
-                newId)
-            .build()
-            .toUri();
-
-        return ResponseEntity.created(url).build();
+    public ResponseEntity<Void> createPost(@RequestBody @Valid Post.PostRequest newPost) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+        ObjectId newId = posts.createPost(newPost);
+        return ResponseEntity.created(Utils.getUrl("getPosts", PostController.class, newId)).build();
     }
 
     /**
@@ -72,7 +74,7 @@ public class PostController {
      * found</code> si no existe el ID proporcionado.
      */
     @GetMapping("{postid}")
-    public PostView.PostResponse getPost(
+    public PostView getPost(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid postId to retrieve")
         ObjectId postId
@@ -101,23 +103,10 @@ public class PostController {
     public ResponseEntity<Void> giveLike(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid post id")
-        ObjectId postId,
-
-        // TODO: borrar cuando se implemente autenticacion
-        @RequestParam(value = "author", required = true)
-        @ValidObjectId(message = "Invalid character id author of the like")
-        ObjectId characterId
-    ) throws ResourceNotFoundException {
-        posts.giveLike(postId, characterId);
-
-        var url = MvcUriComponentsBuilder.fromMethodName(
-                PostController.class,
-                "getPost",
-                postId)
-            .build()
-            .toUri();
-
-        return ResponseEntity.created(url).build();
+        ObjectId postId
+    ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+        posts.giveLike(postId);
+        return ResponseEntity.created(Utils.getUrl("getPost", PostController.class, postId)).build();
     }
 
     // TODO: error de si el usuario no habia dado like antes
@@ -125,14 +114,9 @@ public class PostController {
     public ResponseEntity<Void> removeLike(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid post id")
-        ObjectId postId,
-
-        // TODO: borrar cuando se implemente autenticacion
-        @RequestParam(value = "author", required = true)
-        @ValidObjectId(message = "Invalid character id author of the like")
-        ObjectId characterId
-    ) throws ResourceNotFoundException {
-        posts.removeLike(postId, characterId);
+        ObjectId postId
+    ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+        posts.removeLike(postId);
         return ResponseEntity.noContent().build();
     }
 
@@ -144,12 +128,12 @@ public class PostController {
      */
     // TODO: paginacion si hay muchos comentarios
     @GetMapping("{postid}/comments")
-    public Collection<Comment.CommentResponse> getCommentsByPost(
+    public List<Comment> getCommentsByPost(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid postId to retrieve comments from")
         ObjectId postId
     ) throws ResourceNotFoundException {
-        return posts.getCommentsByPost(postId).stream().map(Comment.CommentResponse::new).toList();
+        return posts.getCommentsByPost(postId);
     }
 
     /**
@@ -164,26 +148,10 @@ public class PostController {
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid post id")
         ObjectId postId,
-
         @RequestBody @Valid
-        Comment.CommentRequest newComment,
-
-        // TODO: borrar cuando se implemente autenticacion
-        @RequestParam(value = "author", required = true)
-        @ValidObjectId(message = "Invalid character id author of the comment")
-        ObjectId characterId
-    ) throws ResourceNotFoundException {
-        // TODO: GET de un comentario especifico?
-        ObjectId commentId = posts.createComment(postId, characterId, newComment);
-
-        // El enlace es a la lista de comentarios
-        var url = MvcUriComponentsBuilder.fromMethodName(
-                PostController.class,
-                "getCommentsByPost",
-                postId)
-            .build()
-            .toUri();
-
-        return ResponseEntity.created(url).build();
+        Comment.CommentRequest newComment
+    ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+        ObjectId commentId = posts.createComment(postId, newComment);
+        return ResponseEntity.created(Utils.getUrl("getCommentsByPost", PostController.class, postId, commentId)).build();
     }
 }

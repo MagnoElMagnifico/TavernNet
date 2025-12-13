@@ -6,13 +6,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
+import java.util.List;
 
+import tavernnet.exception.InvalidCredentialsException;
+import tavernnet.exception.NoCharacterSelectedException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Comment;
 import tavernnet.model.PostView;
 import tavernnet.model.Post;
+import tavernnet.model.User;
 import tavernnet.repository.*;
+import tavernnet.utils.Utils;
 
 @Service
 public class PostService {
@@ -43,10 +47,14 @@ public class PostService {
     /**
      * @return Lista de todos los posts.
      */
-    // TODO: parámetros para personalizar el algoritmo
-    // TODO: paginación
-    public Collection<PostView.PostResponse> getPosts() {
-        return postsViewRepo.findAll().stream().map(PostView.PostResponse::new).toList();
+    public List<PostView> getPosts(
+        String search,
+        String author,
+        int page,
+        int count
+    ) {
+        log.debug("GET /posts?search={}&author={}&page={}&count={}", search, author, page, count);
+        return postsViewRepo.searchPosts(search, author, page, count);
     }
 
     /**
@@ -54,28 +62,31 @@ public class PostService {
      * @return El post que tiene el id especificado.
      * @throws ResourceNotFoundException Si el post no se encuentra.
      */
-    public PostView.PostResponse getPost(ObjectId id) throws ResourceNotFoundException {
-        return new PostView.PostResponse(postsViewRepo
+    public PostView getPost(ObjectId id) throws ResourceNotFoundException {
+        String idStr = id.toHexString();
+        log.debug("GET /posts/{}", idStr);
+        return postsViewRepo
             .findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Post", String.valueOf(id)))
-        );
+            .orElseThrow(() -> new ResourceNotFoundException("Post", idStr));
     }
 
     /**
      * @param newPost Contenido del nuevo post a crear.
      * @return Id del nuevo post creado.
      */
-    public ObjectId createPost(
-        Post.PostRequest newPost,
-        ObjectId characterId
-    ) throws ResourceNotFoundException {
-        if (!charRepo.existsById(characterId)) {
-            throw new ResourceNotFoundException("Character", String.valueOf(characterId));
+    public ObjectId createPost(Post.PostRequest newPost) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+        User.AuthUser user = Utils.getAuthUser();
+        if (user.activeCharacter() == null) {
+            throw new NoCharacterSelectedException();
         }
 
-        Post realPost = new Post(newPost, characterId);
+        if (!charRepo.existsById(user.activeCharacter())) {
+            throw new ResourceNotFoundException("Character", user.activeCharacter().toHexString());
+        }
+
+        Post realPost = new Post(newPost, user.activeCharacter());
         realPost = postsRepo.save(realPost);
-        log.info("Created post with id '{}' by '{}'", realPost.getId(), characterId);
+        log.info("Created post with id '{}' by '{}'", realPost.getId(), user.activeCharacter());
 
         return realPost.getId();
     }
@@ -99,9 +110,7 @@ public class PostService {
      * @return Lista de comentarios del post especificado
      * @throws ResourceNotFoundException Si el ID no existe
      */
-    public Collection<Comment> getCommentsByPost(
-        ObjectId postId
-    ) throws ResourceNotFoundException {
+    public List<Comment> getCommentsByPost(ObjectId postId) throws ResourceNotFoundException {
         // Buscar si existe un post con este ID
         if (!postsRepo.existsById(postId)) {
             throw new ResourceNotFoundException("Post", String.valueOf(postId));
@@ -121,50 +130,62 @@ public class PostService {
      */
     public ObjectId createComment(
         ObjectId postId,
-        ObjectId characterId,
         Comment.CommentRequest newComment
-    ) throws ResourceNotFoundException {
+    ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+        User.AuthUser user = Utils.getAuthUser();
+        if (user.activeCharacter() == null) {
+            throw new NoCharacterSelectedException();
+        }
+
         // Comprobar si el post existe o no
         if (!postsRepo.existsById(postId)) {
             throw new ResourceNotFoundException("Post", String.valueOf(postId));
         }
 
-        if (!charRepo.existsById(characterId)) {
+        if (!charRepo.existsById(user.activeCharacter())) {
             throw new ResourceNotFoundException("Character", String.valueOf(postId));
         }
 
-        Comment comment = new Comment(postId, characterId, newComment);
+        Comment comment = new Comment(postId, user.activeCharacter(), newComment);
         comment = commentRepo.save(comment);
 
-        log.info("Created comment in post '{}' by '{}'", postId, characterId);
-        return comment.id();
+        log.info("Created comment in post '{}' by '{}'", postId, user.activeCharacter().toHexString());
+        return comment.getId();
     }
 
-    public void giveLike(ObjectId postId, ObjectId characterId)
-            throws ResourceNotFoundException {
+    public void giveLike(ObjectId postId) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+        User.AuthUser user = Utils.getAuthUser();
+        if (user.activeCharacter() == null) {
+            throw new NoCharacterSelectedException();
+        }
+
         if (!postsRepo.existsById(postId)) {
             throw new ResourceNotFoundException("Post", String.valueOf(postId));
         }
 
-        if (!charRepo.existsById(characterId)) {
-            throw new ResourceNotFoundException("Character", String.valueOf(characterId));
+        if (!charRepo.existsById(user.activeCharacter())) {
+            throw new ResourceNotFoundException("Character", user.activeCharacter().toHexString());
         }
 
-        likesRepo.addLike(postId, characterId);
-        log.info("Character '{}' gave like to post '{}'", characterId, postId);
+        likesRepo.addLike(postId, user.activeCharacter());
+        log.info("Character '{}' gave like to post '{}'", user.activeCharacter().toHexString(), postId);
     }
 
-    public void removeLike(ObjectId postId, ObjectId characterId)
-            throws ResourceNotFoundException {
+    public void removeLike(ObjectId postId) throws ResourceNotFoundException, NoCharacterSelectedException, InvalidCredentialsException {
+        User.AuthUser user = Utils.getAuthUser();
+        if (user.activeCharacter() == null) {
+            throw new NoCharacterSelectedException();
+        }
+
         if (!postsRepo.existsById(postId)) {
             throw new ResourceNotFoundException("Post", String.valueOf(postId));
         }
 
-        if (!charRepo.existsById(characterId)) {
-            throw new ResourceNotFoundException("Character", String.valueOf(characterId));
+        if (!charRepo.existsById(user.activeCharacter())) {
+            throw new ResourceNotFoundException("Character", user.activeCharacter().toHexString());
         }
 
-        likesRepo.removeLike(postId, characterId);
-        log.info("Character '{}' removed like to post '{}'", characterId, postId);
+        likesRepo.removeLike(postId, user.activeCharacter());
+        log.info("Character '{}' removed like to post '{}'", user.activeCharacter().toHexString(), postId);
     }
 }

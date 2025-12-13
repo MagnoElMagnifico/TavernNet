@@ -80,7 +80,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         // ==== PERSONAJES =====================================================
 
         ObjectId zarionId = new ObjectId();
-        Character zarion = Character.defaultCharacter(
+        Character zarion = new Character(
             zarionId,
             "Zarion",
             "jeremias",
@@ -137,9 +137,9 @@ public class DatabaseInitializer implements CommandLineRunner {
 
         Comment comment = new Comment(
             new ObjectId(),
-            "Muy buen post",
             postId1,
             eltonId,
+            "Muy buen post",
             LocalDateTime.of(2025, 10, 8, 9, 16, 50, 0)
         );
 

@@ -19,7 +19,7 @@ public record Pagination<T> (
     @JsonProperty("total_count")
     int totalCount
 ) {
-    public static Pagination<String> from(AggregationResults<Document> root, int pageNumber) {
+    public static Pagination<String> ofUsernames(AggregationResults<Document> root, int pageNumber) {
         var realRoot = root.getMappedResults().getFirst();
         int count = 0;
         if (

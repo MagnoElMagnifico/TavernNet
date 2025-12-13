@@ -54,7 +54,7 @@ public class UserService implements UserDetailsService {
              pageNumber*pageSize,
              pageSize
         );
-        return Pagination.from(root, pageNumber);
+        return Pagination.ofUsernames(root, pageNumber);
     }
 
     public void createUser(
@@ -106,6 +106,8 @@ public class UserService implements UserDetailsService {
             userRefreshRepo.deleteById(urt.username());
         });
         log.debug("DELETE /users/{} deleted user's refresh tokens", username);
+
+        // TODO: actualizar elementos
     }
 
     // Necesario para que Spring sepa como obtener usuarios de la BD

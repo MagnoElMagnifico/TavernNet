@@ -2,7 +2,9 @@ package tavernnet.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -77,32 +79,6 @@ public class User implements UserDetails, Ownable {
         }
     }
 
-    // ==== DTOs: LOGIN ========================================================
-
-    /** DTO de lo que envia el usuario cuando quiere iniciar sesion  */
-    public record LoginRequest (
-        @NotBlank(message = "Username must be not null or blank")
-        String username,
-
-        @NotBlank(message = "Username must be not null or blank")
-        String password,
-
-        // Posibilidad de iniciar sesion directamente con un personaje concreto
-        @JsonProperty("active_character")
-        @Nullable
-        String activeCharacter
-    ) {
-        public LoginRequest(User user) {
-            this(user.getUsername(), user.getPassword(), null);
-        }
-    }
-
-    public record LoginCharacterRequest (
-        @JsonProperty("character_id")
-        @ValidObjectId
-        ObjectId characterId
-    ) {}
-
     /** DTO de lo que recibe el usuario tras iniciar sesion  */
     public record LoginResponse (
         @NotBlank(message = "Token must be not null or blank")
@@ -115,6 +91,29 @@ public class User implements UserDetails, Ownable {
 
         @NotBlank(message = "Expiration must be not null")
         Duration expiresIn
+    ) {}
+
+    // ==== DTOs: LOGIN ========================================================
+
+    /** DTO de lo que envia el usuario cuando quiere iniciar sesion  */
+    public record LoginRequest (
+        @NotBlank(message = "Username must be not null or blank")
+        @Size(max = 64, message = "Username maximum length is 64 characters")
+        String username,
+
+        @NotBlank(message = "Username must be not null or blank")
+        String password,
+
+        // Posibilidad de iniciar sesion directamente con un personaje concreto
+        @JsonProperty("active_character")
+        @Nullable
+        String activeCharacter
+    ) {}
+
+    public record LoginCharacterRequest (
+        @JsonProperty("character_id")
+        @ValidObjectId
+        ObjectId characterId
     ) {}
 
     // Cuerpo de la petición de cambiar la contraseña
@@ -131,28 +130,33 @@ public class User implements UserDetails, Ownable {
 
     @Id
     @NotBlank(message = "Username must be not null or blank")
+    @Size(max = 64, message = "Username maximum length is 64 characters")
     private final String username;
 
     /** <strong>IMPORTANTE</strong>: Debe usarse <code>PasswordEncoder</code>. */
-    @Field(name = "password")
     @NotBlank(message = "Password must be not null or blank")
+    @Field(name = "password")
+    @JsonIgnore
     private String passwordHash;
 
-    private final GlobalRole role;
-    private final LocalDateTime creation;
+    @Valid private final GlobalRole role;
+    @Valid private final LocalDateTime creation;
 
-    public User(String username, String passwordHash, GlobalRole role, LocalDateTime creation) {
+    // ==== CONSTRUCTORES ======================================================
+
+    public User(
+        @NotBlank String username,
+        @NotBlank String passwordHash,
+        @Valid GlobalRole role,
+        @Valid LocalDateTime creation
+    ) {
         this.username = username;
         this.passwordHash = passwordHash;
         this.role = role;
         this.creation = creation;
     }
 
-    // ==== METODOS ============================================================
-
-    public void setPassword(String password, PasswordEncoder passwordEncoder) {
-        passwordHash = Objects.requireNonNull(passwordEncoder.encode(password));
-    }
+    // ==== GETTERS ============================================================
 
     @Override
     public String getPassword() {
@@ -164,6 +168,20 @@ public class User implements UserDetails, Ownable {
         return username;
     }
 
+    public LocalDateTime getCreation() {
+        return creation;
+    }
+
+    public GlobalRole getRole() {
+        return role;
+    }
+
+    // ==== OTROS MÉTODOS ======================================================
+
+    public void setPassword(@NotBlank String password, @Valid PasswordEncoder passwordEncoder) {
+        passwordHash = Objects.requireNonNull(passwordEncoder.encode(password));
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return role.asAuthorities();
@@ -173,13 +191,5 @@ public class User implements UserDetails, Ownable {
     public String getOwnerId() {
         // El usuario es dueño de si mismo
         return username;
-    }
-
-    public LocalDateTime getCreation() {
-        return creation;
-    }
-
-    public GlobalRole getRole() {
-        return role;
     }
 }

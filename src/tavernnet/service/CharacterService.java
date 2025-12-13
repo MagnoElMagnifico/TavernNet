@@ -49,12 +49,12 @@ public class CharacterService {
         this.validator = validator;
     }
 
-    public Collection<Character.PublicCharacter> getCharactersByUser(String username) throws ResourceNotFoundException {
+    public Collection<Character> getCharactersByUser(String username) throws ResourceNotFoundException {
         log.debug("GET /users/{}/characters", username);
         if (!userRepo.existsById(username)) {
             throw new ResourceNotFoundException("User", username);
         }
-        return charRepo.getCharactersByUser(username).stream().map(Character.PublicCharacter::new).toList();
+        return charRepo.getCharactersByUser(username);
     }
 
     /**
@@ -63,7 +63,7 @@ public class CharacterService {
      * @return El character que tiene el id especificado.
      * @throws ResourceNotFoundException Si el character no se encuentra.
      */
-    public Character.PublicCharacter getCharacter(
+    public Character getCharacter(
         String username,
         String characterName
     ) throws ResourceNotFoundException {
@@ -78,7 +78,7 @@ public class CharacterService {
             throw new ResourceNotFoundException("Character", characterName);
         }
 
-        return new Character.PublicCharacter(character);
+        return character;
     }
 
     /**
@@ -109,10 +109,10 @@ public class CharacterService {
 
         Character realCharacter = charRepo.save(new Character(newCharacter, username));
         log.debug("POST /users/{}/characters id='{}'", username, realCharacter.getClass());
-        return realCharacter.id().toHexString();
+        return realCharacter.getId().toHexString();
     }
 
-    public Character.PublicCharacter updateCharacter(
+    public Character updateCharacter(
         String username,
         String characterName,
         List<JsonPatchOperation> changes
@@ -139,21 +139,21 @@ public class CharacterService {
             mapper.convertValue(character, JsonNode.class)
         );
         Character updated = mapper.convertValue(updatedNode, Character.class);
-        assert updated.id() == character.id() && updated.creation() == character.creation();
+        assert updated.getId() == character.getId() && updated.getCreation() == character.getCreation();
         Character newCharacter = new Character(
-            character.id(), // conservar del original
-            updated.name(),
-            character.user(), // conservar del original
-            updated.biography(),
-            updated.race(),
-            updated.languages(),
-            character.creation(), // conservar del original
-            updated.alignment(),
-            updated.stats(),
-            updated.modifiers(),
-            updated.combat(),
-            updated.passive(),
-            updated.actions()
+            character.getId(), // conservar del original
+            updated.getName(),
+            character.getUser(), // conservar del original
+            updated.getBiography(),
+            updated.getRace(),
+            updated.getLanguages(),
+            character.getCreation(), // conservar del original
+            updated.getAlignment(),
+            updated.getStats(),
+            updated.getModifiers(),
+            updated.getCombat(),
+            updated.getPassive(),
+            updated.getActions()
         );
 
         // Validar los campos manualmente
@@ -167,7 +167,7 @@ public class CharacterService {
 
         // Se debe hacer asi o MongoDB tratara de insertarlo como un nuevo documento
         charRepo.save(newCharacter);
-        return new Character.PublicCharacter(newCharacter);
+        return newCharacter;
     }
 
     public void deleteCharacter(
@@ -178,6 +178,8 @@ public class CharacterService {
         if (deletedCharacter == null) {
             throw new ResourceNotFoundException("Character", characterName);
         }
-        charRepo.deleteCharacterById(deletedCharacter.id());
+        charRepo.deleteCharacterById(deletedCharacter.getId());
+
+        // TODO: actualizar elementos
     }
 }

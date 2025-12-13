@@ -1,12 +1,18 @@
 package tavernnet.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.PersistenceCreator;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
+import tavernnet.utils.ValidObjectId;
 import tavernnet.utils.patch.JsonPatchOperation;
 import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 
@@ -16,82 +22,7 @@ import java.util.List;
 
 @Document(collection = "characters")
 @NullMarked
-public record Character(
-    // TODO: esto se serializa como objeto y no como string
-    @Id ObjectId id,
-    @NotBlank @Size(max = 50, message = "Character name too long") String name,
-    @NotBlank String user,
-    @Nullable @Size(max = 1000, message = "Biography too long") String biography,
-    @NotBlank @Size(max = 50, message = "Race field too long") String race,
-    Collection<@NotBlank String> languages,
-    LocalDateTime creation,
-    @Valid Alignment alignment,
-    @Valid Stats stats,
-    @Valid Stats modifiers,
-    @Valid CombatStats combat,
-    @Valid PassiveStats passive,
-    Collection<@Valid Action> actions
-) implements Ownable {
-
-    public static Character defaultCharacter(
-        ObjectId id,
-        String name,
-        String username,
-        String biography,
-        String race,
-        Collection<String> languages
-    ) {
-        return new Character(
-            id,
-            name,
-            username,
-            biography,
-            race,
-            languages,
-            LocalDateTime.now(),
-            Alignment.TRUE_NEUTRAL,
-            Stats.defaultGeneralStats(),
-            Stats.defaultModifiers(),
-            CombatStats.defaultStats(),
-            PassiveStats.defaultStats(),
-            Action.defaultActions()
-        );
-    }
-
-    public Character(CreationRequest request, String username) {
-        this(
-            null, // desconocido hasta insertar en la DB
-            request.name,
-            username,
-            request.biography,
-            request.race,
-            request.languages,
-            LocalDateTime.now(),
-            request.alignment,
-            request.general == null? Stats.defaultGeneralStats() : request.general,
-            request.general == null? Stats.defaultModifiers() : Stats.asModifiers(request.general),
-            request.combat == null? CombatStats.defaultStats() : request.combat,
-            request.passive == null? PassiveStats.defaultStats() : request.passive,
-            request.actions
-        );
-    }
-
-    @Override
-    public String getOwnerId() {
-        return user;
-    }
-
-    public static void validatePatch(JsonPatchOperation op) {
-        if (op == null || op.path() == null) {
-            return;
-        }
-
-        switch (op.path().toString()) {
-            case "/id", "/creation", "/user" -> throw new JsonPatchFailedException(
-                "Changing ID, user or creation date is forbidden"
-            );
-        }
-    }
+public class Character implements Ownable {
 
     // ==== TIPOS DE DATOS ASOCIADOS ===========================================
 
@@ -129,7 +60,7 @@ public record Character(
         }
 
         // Obtiene los modificadores de las estadísticas según las reglas estándar
-        public static Stats asModifiers(Stats general) {
+        public static Stats asModifiers(@Valid Stats general) {
             return new Stats(
                 modifierOf(general.constitution),
                 modifierOf(general.dexterity),
@@ -185,8 +116,6 @@ public record Character(
 
     // ==== DTOs ===============================================================
 
-    // TODO: usar JsonView en su lugar
-
     public record CreationRequest (
         @NotBlank @Size(max = 50, message = "Character name too long") String name,
         @Nullable @Size(max = 1000, message = "Biography too long") String biography,
@@ -199,36 +128,191 @@ public record Character(
         @NotNull Collection<@Valid Action> actions
     ) {}
 
-    public record PublicCharacter (
-        @NotBlank String id,
-        @NotBlank @Size(max = 50, message = "Character name too long") String name,
+    // ==== ATRIBUTOS ==========================================================
+
+    @Id
+    @ValidObjectId(message = "Invalid character id")
+    @JsonIgnore
+    private final ObjectId id;
+
+    @ValidObjectId(message = "Invalid character id")
+    @Transient
+    @JsonProperty("id")
+    private final String idStr;
+
+    @NotBlank
+    @Size(max = 50, message = "Character name too long")
+    private final String name;
+
+    @NotBlank
+    private final String user;
+
+    @Nullable
+    @Size(max = 1024, message = "Biography too long")
+    private final String biography;
+
+    @NotBlank
+    @Size(max = 50, message = "Race field too long")
+    private final String race;
+
+    private final Collection<@NotBlank String> languages;
+    private final LocalDateTime creation;
+
+    @Valid private final Alignment alignment;
+    @Valid private final Stats stats;
+    @Valid private final Stats modifiers;
+    @Valid private final CombatStats combat;
+    @Valid private final PassiveStats passive;
+    private final Collection<@Valid Action> actions;
+
+    // ==== CONSTRUCTORES ======================================================
+
+    @PersistenceCreator
+    @JsonCreator
+    public Character(
+        @ValidObjectId ObjectId id,
+        @NotBlank String name,
         @NotBlank String user,
-        @Nullable @Size(max = 1000, message = "Biography too long") String biography,
-        @NotBlank @Size(max = 50, message = "Race field too long") String race,
+        @Nullable String biography,
+        @NotBlank String race,
         Collection<@NotBlank String> languages,
         LocalDateTime creation,
-        @Valid Alignment alignment,
-        @Valid Stats stats,
-        @Valid Stats modifiers,
-        @Valid CombatStats combat,
-        @Valid PassiveStats passive,
+        Alignment alignment,
+        @Nullable Stats stats,
+        @Nullable Stats modifiers,
+        @Nullable CombatStats combat,
+        @Nullable PassiveStats passive,
         Collection<@Valid Action> actions
     ) {
-        public PublicCharacter(Character character) {
-            this(
-                character.id.toHexString(),
-                character.name,
-                character.user,
-                character.biography,
-                character.race,
-                character.languages,
-                character.creation,
-                character.alignment,
-                character.stats,
-                character.modifiers,
-                character.combat,
-                character.passive,
-                character.actions
+        this.id = id;
+        this.idStr = id == null? null : id.toHexString();
+
+        this.name = name;
+        this.user = user;
+        this.biography = biography;
+        this.race = race;
+        this.languages = languages;
+        this.creation = creation;
+        this.alignment = alignment;
+        this.stats = stats == null? Stats.defaultGeneralStats() : stats;
+        this.modifiers = modifiers == null? Stats.defaultModifiers() : Stats.asModifiers(this.stats);
+        this.combat = combat == null? CombatStats.defaultStats() : combat;
+        this.passive = passive == null? PassiveStats.defaultStats() : passive;
+        this.actions = actions;
+    }
+
+    public Character(@Valid CreationRequest request, @NotBlank String username) {
+        this(
+            null, // desconocido hasta insertar en la DB
+            request.name,
+            username,
+            request.biography,
+            request.race,
+            request.languages,
+            LocalDateTime.now(),
+            request.alignment,
+            request.general,
+            request.general,
+            request.combat,
+            request.passive,
+            request.actions
+        );
+    }
+
+    public Character(
+        @ValidObjectId ObjectId id,
+        @NotBlank String name,
+        @NotBlank String user,
+        @NotBlank String biography,
+        @NotBlank String race,
+        Collection<@NotBlank String> languages
+    ) {
+        this(
+            id,
+            name,
+            user,
+            biography,
+            race,
+            languages,
+            LocalDateTime.now(),
+            Alignment.TRUE_NEUTRAL,
+            Stats.defaultGeneralStats(),
+            Stats.defaultModifiers(),
+            CombatStats.defaultStats(),
+            PassiveStats.defaultStats(),
+            Action.defaultActions()
+        );
+    }
+
+    // ==== GETTERS ============================================================
+
+    public Collection<Action> getActions() {
+        return actions;
+    }
+
+    public PassiveStats getPassive() {
+        return passive;
+    }
+
+    public CombatStats getCombat() {
+        return combat;
+    }
+
+    public Stats getModifiers() {
+        return modifiers;
+    }
+
+    public Stats getStats() {
+        return stats;
+    }
+
+    public Alignment getAlignment() {
+        return alignment;
+    }
+
+    public LocalDateTime getCreation() {
+        return creation;
+    }
+
+    public Collection<String> getLanguages() {
+        return languages;
+    }
+
+    public String getRace() {
+        return race;
+    }
+
+    public @Nullable String getBiography() {
+        return biography;
+    }
+
+    public String getUser() {
+        return user;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public ObjectId getId() {
+        return id;
+    }
+
+    // ==== OTROS MÉTODOS ======================================================
+
+    @Override
+    public String getOwnerId() {
+        return user;
+    }
+
+    public static void validatePatch(JsonPatchOperation op) {
+        if (op == null || op.path() == null) {
+            return;
+        }
+
+        switch (op.path().toString()) {
+            case "/id", "/creation", "/user" -> throw new JsonPatchFailedException(
+                "Changing ID, user or creation date is forbidden"
             );
         }
     }

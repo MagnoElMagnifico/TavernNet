@@ -9,13 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Pagination;
 import tavernnet.model.User;
 import tavernnet.service.UserService;
+import tavernnet.utils.Utils;
 
 @RestController
 @RequestMapping("users")
@@ -55,13 +55,7 @@ public class UserController {
         @RequestBody @Valid User.LoginRequest request
     ) throws DuplicatedResourceException {
         user.createUser(request);
-        var url = MvcUriComponentsBuilder.fromMethodName(
-                UserController.class,
-                "getUser",
-                request.username())
-            .build()
-            .toUri();
-        return ResponseEntity.created(url).build();
+        return ResponseEntity.created(Utils.getUrl("getUser", UserController.class, request.username())).build();
     }
 
     // Servicio para obtener un usuario por ID

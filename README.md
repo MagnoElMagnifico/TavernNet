@@ -79,7 +79,7 @@ _Parties_:
 
 # Diseño de la API
 
-Usuarios y autenticación:
+Usuarios y personajes (`UserService`, `CharacterService`):
 
 | Verbo    | URL                                           | Descripción                                    | Autenticacion |
 |----------|-----------------------------------------------|------------------------------------------------|---------------|
@@ -92,6 +92,11 @@ Usuarios y autenticación:
 | `POST`   | `/users/{userid}/characters`                  | Crear personaje                                | Si            |
 | `PATCH`  | `/users/{userid}/characters/{character-name}` | Editar stats de personaje                      | Si            |
 | `DELETE` | `/users/{userid}/characters/{character-name}` | Borrar el personaje                            | Si            |
+
+Operaciones de autenticación y seguridad (`AuthService`):
+
+| Verbo    | URL                                           | Descripción                                    | Autenticacion |
+|----------|-----------------------------------------------|------------------------------------------------|---------------|
 | `POST`   | `/auth/login`                                 | Iniciar sesión como usuario                    | *No*          |
 | `POST`   | `/auth/character-login`                       | Iniciar sesión como un personaje               | Si            |
 | `POST`   | `/auth/refresh`                               | Genera un nuevo token sin contraseña           | Si            |
@@ -168,7 +173,7 @@ Otras decisiones de diseño:
     implementa en `AuthService` porque se trata de una operación de seguridad y
     necesita acceso al repositorio de los _RefreshTokens_.
 
-Creación de posts:
+Creación de posts (`PostService`):
 
 | Verbo    | URL                                        | Descripción                  | Autenticacion |
 |----------|--------------------------------------------|------------------------------|---------------|
@@ -181,7 +186,7 @@ Creación de posts:
 | `GET`    | `/posts/{postid}/comments?page=0&count=10` | Obtener lista de comentarios | No            |
 | `POST`   | `/posts/{postid}/comments`                 | Enviar comentario a un post  | Si            |
 
-Mensajes:
+_Parties_ y mensajes (`PartyService`):
 
 | Verbo    | URL                                         | Descripción                            | Autenticacion     |
 |----------|---------------------------------------------|----------------------------------------|-------------------|

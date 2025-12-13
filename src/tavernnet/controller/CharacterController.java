@@ -7,12 +7,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
 import tavernnet.exception.*;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.service.CharacterService;
 import tavernnet.model.Character;
+import tavernnet.utils.Utils;
 import tavernnet.utils.patch.JsonPatchOperation;
 
 import java.util.Collection;
@@ -33,7 +33,7 @@ public class CharacterController {
     // Servicio para obtener todos los personajes de un usuario
     @GetMapping("{userid}/characters")
     @PreAuthorize("true")
-    public Collection<Character.PublicCharacter> getCharacters(
+    public Collection<Character> getCharacters(
         @PathVariable("userid") @NotBlank String id
     ) throws ResourceNotFoundException {
         return characterService.getCharactersByUser(id);
@@ -50,17 +50,8 @@ public class CharacterController {
         @PathVariable("userid") @NotBlank String userId,
         @RequestBody @Valid Character.CreationRequest newCharacter
     ) throws DuplicatedResourceException, ResourceNotFoundException, LimitException {
-            String newId = characterService.createCharacter(newCharacter, userId);
-
-            var url = MvcUriComponentsBuilder.fromMethodName(
-                    CharacterController.class,
-                    "getCharacter",
-                    userId,
-                    newId)
-                .build()
-                .toUri();
-
-            return ResponseEntity.created(url).build();
+        String newId = characterService.createCharacter(newCharacter, userId);
+        return ResponseEntity.created(Utils.getUrl("getCharacter", CharacterController.class, userId, newId)).build();
     }
 
     /**
@@ -71,7 +62,7 @@ public class CharacterController {
      */
     @GetMapping("{userid}/characters/{characterName}")
     @PreAuthorize("true")
-    public Character.PublicCharacter getCharacter(
+    public Character getCharacter(
         @PathVariable("userid") @NotBlank String userId,
         @PathVariable("characterName") @NotBlank String characterName
     ) throws ResourceNotFoundException {
@@ -80,7 +71,7 @@ public class CharacterController {
 
     @PatchMapping("{userid}/characters/{characterName}")
     @PreAuthorize("hasRole('ADMIN') or @auth.isCharacterOwnerByName(#username, #characterName, principal)")
-    public Character.PublicCharacter updateCharacter(
+    public Character updateCharacter(
         @PathVariable("userid") @NotBlank String username,
         @PathVariable("characterName") @NotBlank String characterName,
         @RequestBody @Valid List<@Valid JsonPatchOperation> changes

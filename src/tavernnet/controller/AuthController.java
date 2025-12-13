@@ -155,5 +155,4 @@ public class AuthController {
             .maxAge(refresh.ttl())
             .build();
     }
-
 }
