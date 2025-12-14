@@ -41,10 +41,15 @@ Si no existen las claves y certificados, se generarán automáticamente a la hor
 de crear la imagen.
 
 Los tests automatizados se ejecutan con el siguiente comando (requiere librería
-de Python `requests`):
+de Python `requests`), o cambiando de módulo para solo ejecutar un subconjunto
+de los tests:
 
 ```bash
-python test/main.py
+python -m test.all
+python -m test.login
+python -m test.posts
+python -m test.parties
+python -m test.users_characters
 ```
 
 Esto también está integrado dentro del contenedor de desarrollo:
@@ -177,7 +182,7 @@ Creación de posts (`PostService`):
 
 | Verbo    | URL                                        | Descripción                  | Autenticacion |
 |----------|--------------------------------------------|------------------------------|---------------|
-| `GET`    | `/posts?page=0&count=10`                   | Lista de últimos posts       | No            |
+| `GET`    | `/posts?search=X&author=X&page=0&count=10` | Buscar posts                 | No            |
 | `POST`   | `/posts`                                   | Crear un post                | Si            |
 | `GET`    | `/posts/{postid}`                          | Consultar un post            | No            |
 | `DELETE` | `/posts/{postid}`                          | Borrar un post               | Si            |
