@@ -167,7 +167,7 @@ public class AuthService {
     }
 
     public LoginResponse loginCharacter(ObjectId characterId) throws ResourceNotFoundException, InvalidCredentialsException {
-        User.AuthUser authUser = Utils.getAuthUser();
+        User.AuthUser authUser = Utils.safeGetAuthUser();
         log.debug("POST /auth/login-character for user=\"{}\"", authUser.username());
 
         // No es necesario verificar que el personaje existe porque ya se hace al validar los permisos
@@ -213,7 +213,7 @@ public class AuthService {
     }
 
     public void logout() throws InvalidCredentialsException {
-        User.AuthUser user = Utils.getAuthUser();
+        User.AuthUser user = Utils.safeGetAuthUser();
         log.debug("POST /auth/logout user=\"{}\"", user.username());
 
         // Invalidar tokens del usuario
@@ -240,7 +240,7 @@ public class AuthService {
         log.debug("POST /users/{}/password changed for user=\"{}\"", user.getUsername(), user.getUsername());
 
         // Rotar refresh tokens
-        User.AuthUser authUser = Utils.getAuthUser();
+        User.AuthUser authUser = Utils.safeGetAuthUser();
         RefreshToken newRefreshToken = generateRefreshToken(
             user.getUsername(),
             user.getRole(),

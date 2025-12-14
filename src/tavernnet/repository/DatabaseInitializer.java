@@ -99,6 +99,7 @@ public class DatabaseInitializer implements CommandLineRunner {
             "elf",
             Arrays.asList("Common", "Elfic", "Undercommon", "Abisal"),
             LocalDateTime.now(),
+            3,
             Character.Alignment.CHAOTIC_EVIL,
             eltonStats,
             Character.Stats.asModifiers(eltonStats),

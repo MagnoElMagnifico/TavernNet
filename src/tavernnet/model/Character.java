@@ -114,6 +114,27 @@ public class Character implements Ownable {
         }
     }
 
+    // ==== OTRAS REPRESENTACIONES =============================================
+
+    public record Summary (
+        @NotBlank
+        @JsonProperty("user")
+        String username,
+
+        @ValidObjectId
+        @JsonProperty("id")
+        String characterId,
+
+        @NotBlank
+        @JsonProperty("name")
+        String characterName,
+
+        @Min(value = 1) @Max(value = 20)
+        int level
+
+        // TODO: profile picture
+    ) {}
+
     // ==== DTOs ===============================================================
 
     public record CreationRequest (
@@ -121,6 +142,7 @@ public class Character implements Ownable {
         @Nullable @Size(max = 1000, message = "Biography too long") String biography,
         @NotBlank @Size(max = 50, message = "Race field too long") String race,
         @NotNull Collection<@NotBlank String> languages,
+        @Nullable @Min(value = 1, message = "Minimum allowed level is 1") @Max(value = 20, message = "Maximum allowed level is 20") Integer level,
         @Valid Alignment alignment,
         @Valid @Nullable Stats general,
         @Valid @Nullable CombatStats combat,
@@ -158,12 +180,18 @@ public class Character implements Ownable {
     private final Collection<@NotBlank String> languages;
     private final LocalDateTime creation;
 
+    @Min(value = 1, message = "Minimum allowed level is 1")
+    @Max(value = 20, message = "Maximum allowed level is 20")
+    private final int level;
+
     @Valid private final Alignment alignment;
     @Valid private final Stats stats;
     @Valid private final Stats modifiers;
     @Valid private final CombatStats combat;
     @Valid private final PassiveStats passive;
     private final Collection<@Valid Action> actions;
+
+    // TODO: profile picture
 
     // ==== CONSTRUCTORES ======================================================
 
@@ -177,6 +205,7 @@ public class Character implements Ownable {
         @NotBlank String race,
         Collection<@NotBlank String> languages,
         LocalDateTime creation,
+        @Nullable Integer level,
         Alignment alignment,
         @Nullable Stats stats,
         @Nullable Stats modifiers,
@@ -193,6 +222,8 @@ public class Character implements Ownable {
         this.race = race;
         this.languages = languages;
         this.creation = creation;
+        this.level = level == null? 1 : level;
+
         this.alignment = alignment;
         this.stats = stats == null? Stats.defaultGeneralStats() : stats;
         this.modifiers = modifiers == null? Stats.defaultModifiers() : Stats.asModifiers(this.stats);
@@ -210,6 +241,7 @@ public class Character implements Ownable {
             request.race,
             request.languages,
             LocalDateTime.now(),
+            request.level,
             request.alignment,
             request.general,
             request.general,
@@ -235,6 +267,7 @@ public class Character implements Ownable {
             race,
             languages,
             LocalDateTime.now(),
+            1,
             Alignment.TRUE_NEUTRAL,
             Stats.defaultGeneralStats(),
             Stats.defaultModifiers(),
@@ -296,6 +329,10 @@ public class Character implements Ownable {
 
     public ObjectId getId() {
         return id;
+    }
+
+    public int getLevel() {
+        return level;
     }
 
     // ==== OTROS MÉTODOS ======================================================

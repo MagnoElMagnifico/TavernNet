@@ -1,6 +1,7 @@
 package tavernnet.service;
 
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import tavernnet.model.Comment;
 import tavernnet.model.PostView;
 import tavernnet.model.Post;
 import tavernnet.model.User;
+import tavernnet.model.Character;
 import tavernnet.repository.*;
 import tavernnet.utils.Utils;
 
@@ -44,6 +46,8 @@ public class PostService {
         this.charRepo = charRepo;
     }
 
+    // ==== POSTS ==============================================================
+
     /**
      * @return Lista de todos los posts.
      */
@@ -54,7 +58,17 @@ public class PostService {
         int count
     ) {
         log.debug("GET /posts?search={}&author={}&page={}&count={}", search, author, page, count);
-        return postsViewRepo.searchPosts(search, author, page, count);
+
+        // Para saber si el usuario actual le ha dado like, debemos saber qué usuario es
+        User.AuthUser authUser = Utils.getAuthUser();
+        ObjectId postAuthor = authUser == null? null : authUser.activeCharacter();
+
+        // Hacemos la búsqueda y añadimos los detalles del personaje autor para
+        // dar más información al cliente. También se configuran los likes.
+        return postsViewRepo.searchPosts(search, author, page, count)
+            .stream()
+            .peek((p) -> { setAuthorDetails(p); setLikedByUser(p, postAuthor); })
+            .toList();
     }
 
     /**
@@ -65,9 +79,21 @@ public class PostService {
     public PostView getPost(ObjectId id) throws ResourceNotFoundException {
         String idStr = id.toHexString();
         log.debug("GET /posts/{}", idStr);
-        return postsViewRepo
+
+        // Realizar la consulta
+        PostView post =  postsViewRepo
             .findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Post", idStr));
+
+        // Configurar detalles del personaje autor
+        setAuthorDetails(post);
+
+        // Para saber si el usuario actual le ha dado like, debemos saber qué usuario es
+        User.AuthUser authUser = Utils.getAuthUser();
+        ObjectId postAuthor = authUser == null? null : authUser.activeCharacter();
+        setLikedByUser(post, postAuthor);
+
+        return post;
     }
 
     /**
@@ -75,7 +101,7 @@ public class PostService {
      * @return Id del nuevo post creado.
      */
     public ObjectId createPost(Post.PostRequest newPost) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
-        User.AuthUser user = Utils.getAuthUser();
+        User.AuthUser user = Utils.safeGetAuthUser();
         if (user.activeCharacter() == null) {
             throw new NoCharacterSelectedException();
         }
@@ -105,6 +131,10 @@ public class PostService {
         likesRepo.deleteByPostId(postId);
     }
 
+    // TODO: PUT
+
+    // ==== COMENTARIOS ========================================================
+
     /**
      * @param postId Identificador del post a obtener sus comentarios
      * @return Lista de comentarios del post especificado
@@ -119,7 +149,10 @@ public class PostService {
         // Obtener la lista de comentarios
         return commentRepo
             .getCommentsByPost(postId)
-            .orElseThrow(() -> new ResourceNotFoundException("Post", String.valueOf(postId)));
+            .orElseThrow(() -> new ResourceNotFoundException("Post", String.valueOf(postId)))
+            .stream()
+            .peek(this::setAuthorDetails)
+            .toList();
     }
 
     /**
@@ -132,7 +165,7 @@ public class PostService {
         ObjectId postId,
         Comment.CommentRequest newComment
     ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
-        User.AuthUser user = Utils.getAuthUser();
+        User.AuthUser user = Utils.safeGetAuthUser();
         if (user.activeCharacter() == null) {
             throw new NoCharacterSelectedException();
         }
@@ -153,8 +186,12 @@ public class PostService {
         return comment.getId();
     }
 
+    // TODO: put delete
+
+    // ==== LIKES ==============================================================
+
     public void giveLike(ObjectId postId) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
-        User.AuthUser user = Utils.getAuthUser();
+        User.AuthUser user = Utils.safeGetAuthUser();
         if (user.activeCharacter() == null) {
             throw new NoCharacterSelectedException();
         }
@@ -172,7 +209,7 @@ public class PostService {
     }
 
     public void removeLike(ObjectId postId) throws ResourceNotFoundException, NoCharacterSelectedException, InvalidCredentialsException {
-        User.AuthUser user = Utils.getAuthUser();
+        User.AuthUser user = Utils.safeGetAuthUser();
         if (user.activeCharacter() == null) {
             throw new NoCharacterSelectedException();
         }
@@ -187,5 +224,37 @@ public class PostService {
 
         likesRepo.removeLike(postId, user.activeCharacter());
         log.info("Character '{}' removed like to post '{}'", user.activeCharacter().toHexString(), postId);
+    }
+
+    // ==== FUNCIONES DE AYUDA =================================================
+
+    private void setLikedByUser(Post post, @Nullable ObjectId author) {
+        post.setLikedByCurrentUser(
+            author == null
+                ? null
+                : likesRepo.existsLike(post.getId(), author)
+        );
+    }
+
+    private void setAuthorDetails(Post post) {
+        Character character = charRepo
+            .findById(post.getAuthor())
+            .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character"));
+        post.setAuthorDetails(
+            character.getUser(),
+            character.getName(),
+            character.getLevel()
+        );
+    }
+
+    private void setAuthorDetails(Comment comment) {
+        Character character = charRepo
+            .findById(comment.getAuthor())
+            .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character"));
+        comment.setAuthorDetails(
+            character.getUser(),
+            character.getName(),
+            character.getLevel()
+        );
     }
 }

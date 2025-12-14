@@ -1,6 +1,7 @@
 package tavernnet.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -52,11 +54,10 @@ public class Post implements Ownable {
     @Transient
     private final String idStr;
 
-    @ValidObjectId(message = "Invalid author id")
+    @Valid
     @JsonProperty("author")
     @Transient
-    private final String authorStr;
-
+    private Character.@Nullable Summary authorDetails;
 
     // Payload: copiados de lo que ha enviado el usuario
     @NotBlank(message = "Title must be not null or blank")
@@ -67,11 +68,17 @@ public class Post implements Ownable {
     @Size(max = 1024, message = "Post content maximum length is 1024 characters")
     private final String content;
 
-    // TODO: liked by current user (extraer de la sesion)
+    // null: desconocido, true: el usuario ha dado like, false: no ha dado like
+    @Nullable
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean likedByCurrentUser;
 
     // Configurado al crear un nuevo post
     @NotNull(message = "Date must be not null")
     private final LocalDateTime date;
+
+    // TODO: content image
 
     // ==== CONSTRUCTORES ======================================================
 
@@ -85,7 +92,6 @@ public class Post implements Ownable {
         this.id = id;
         this.idStr = id == null? null : id.toHexString();
         this.author = author;
-        this.authorStr = author.toHexString();
         this.title = title;
         this.content = content;
         this.date = date;
@@ -123,7 +129,23 @@ public class Post implements Ownable {
         return date;
     }
 
+    public Character.@Nullable Summary getAuthorDetails() {
+        return authorDetails;
+    }
+
+    public @Nullable Boolean getLikedByCurrentUser() {
+        return likedByCurrentUser;
+    }
+
     // ==== OTROS MÉTODOS ======================================================
+
+    public void setAuthorDetails(String username, String characterName, int level) {
+        this.authorDetails = new Character.Summary(username, author.toHexString(), characterName, level);
+    }
+
+    public void setLikedByCurrentUser(@Nullable Boolean likedByCurrentUser) {
+        this.likedByCurrentUser = likedByCurrentUser;
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -138,6 +160,6 @@ public class Post implements Ownable {
 
     @Override
     public String getOwnerId() {
-        return authorStr;
+        return author.toHexString();
     }
 }

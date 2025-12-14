@@ -65,8 +65,8 @@ public class User implements UserDetails, Ownable {
 
     /** DTO de respuesta al mostrar usuarios */
     public record PublicProfile(
-        @NotBlank
-        String username,
+        // TODO: profile picture
+        @NotBlank String username,
         LocalDateTime creation,
         Collection<Character> characters
     ) {
@@ -78,6 +78,8 @@ public class User implements UserDetails, Ownable {
             );
         }
     }
+
+    // TODO: version del public profile pero que use Character.Summary (para el listado de usuarios)
 
     /** DTO de lo que recibe el usuario tras iniciar sesion  */
     public record LoginResponse (
@@ -141,6 +143,8 @@ public class User implements UserDetails, Ownable {
 
     @Valid private final GlobalRole role;
     @Valid private final LocalDateTime creation;
+
+    // TODO: profile picture
 
     // ==== CONSTRUCTORES ======================================================
 

@@ -1,5 +1,6 @@
 package tavernnet.utils;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
@@ -21,7 +22,7 @@ public class Utils {
             .toUri();
     }
 
-    public static User.AuthUser getAuthUser() throws InvalidCredentialsException {
+    public static User.AuthUser safeGetAuthUser() throws InvalidCredentialsException {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
         // Esto no debería ejecutarse nunca si los métodos del controlador están
@@ -31,6 +32,14 @@ public class Utils {
             throw new InvalidCredentialsException(InvalidCredentialsException.CredentialType.JWT, "<empty>");
         }
 
+        return (User.AuthUser) auth.getPrincipal();
+    }
+
+    public static User.@Nullable AuthUser getAuthUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getPrincipal() == null) {
+            return null;
+        }
         return (User.AuthUser) auth.getPrincipal();
     }
 }

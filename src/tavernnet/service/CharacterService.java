@@ -148,6 +148,7 @@ public class CharacterService {
             updated.getRace(),
             updated.getLanguages(),
             character.getCreation(), // conservar del original
+            updated.getLevel(),
             updated.getAlignment(),
             updated.getStats(),
             updated.getModifiers(),
