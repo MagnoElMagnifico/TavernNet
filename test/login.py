@@ -4,7 +4,7 @@ import json
 import uuid
 from http import HTTPStatus
 from .utils import SITE, INVALID_PASSWD, USERNAME_NOT_EXISTS, REFRESH_COOKIE, CHAR_EXISTS, CHAR_NAME_NOT_EXISTS, INVALID_ID, JWT_ACTIVE_CHAR, NEW_PASSWD
-from .utils import User, LoginUser, check, setup, end
+from .utils import User, LoginUser, check, check_value, setup, end
 
 
 def test_login_login(user: User):
@@ -76,7 +76,11 @@ def test_login_login(user: User):
     # Comprobar que el nuevo JWT contiene un campo con el personaje activo
     jwt_content = json.loads(base64.b64decode(jwt.split('.')[1] + '=='))
     print('JWT content', jwt_content)
-    assert jwt_content[JWT_ACTIVE_CHAR] == user.character.id, 'JWT does not have active character'
+    check_value(
+        r,
+        jwt_content[JWT_ACTIVE_CHAR] == user.character.id,
+        msg='JWT does not have active character'
+    )
 
 
     # CAMBIAR PERSONAJE ACTIVO
@@ -112,7 +116,11 @@ def test_login_login(user: User):
     # Comprobar que el nuevo JWT contiene un campo con el personaje activo
     jwt_content = json.loads(base64.b64decode(jwt.split('.')[1] + '=='))
     print('JWT content', jwt_content)
-    assert jwt_content[JWT_ACTIVE_CHAR] == user.character.id, 'JWT does not have active character'
+    check_value(
+        r,
+        jwt_content[JWT_ACTIVE_CHAR] == user.character.id,
+        msg='JWT does not have active character'
+    )
 
     return LoginUser(user.username, user.password, user.character, jwt, refresh_token, {'Authorization': 'Bearer ' + jwt})
 
@@ -143,7 +151,11 @@ def test_login_refresh(login: LoginUser) -> LoginUser:
     assert login.character is not None, 'User has no character??? Setup failed somehow'
     jwt_content = json.loads(base64.b64decode(login.jwt.split('.')[1] + '=='))
     print('JWT content', jwt_content)
-    assert jwt_content[JWT_ACTIVE_CHAR] == login.character.id, 'JWT does not have active character'
+    check_value(
+        r,
+        jwt_content[JWT_ACTIVE_CHAR] == login.character.id,
+        msg='JWT does not have active character'
+    )
 
     return login
 

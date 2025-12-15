@@ -33,6 +33,8 @@ public class Post implements Ownable {
         @NotBlank(message = "Content must be not null or blank")
         @Size(max = 1024, message = "Post content maximum length is 1024 characters")
         String content
+
+        // TODO: imagen
     ) {}
 
     // ==== ATRIBUTOS ==========================================================
@@ -72,11 +74,12 @@ public class Post implements Ownable {
     @Nullable
     @Transient
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonProperty("liked")
     private Boolean likedByCurrentUser;
 
     // Configurado al crear un nuevo post
     @NotNull(message = "Date must be not null")
-    private final LocalDateTime date;
+    private final LocalDateTime creation;
 
     // TODO: content image
 
@@ -86,15 +89,15 @@ public class Post implements Ownable {
         @ValidObjectId ObjectId id,
         @ValidObjectId ObjectId author,
         @NotBlank String title,
-        String content,
-        @Valid LocalDateTime date
+        @NotBlank String content,
+        @Valid LocalDateTime creation
     ) {
         this.id = id;
         this.idStr = id == null? null : id.toHexString();
         this.author = author;
         this.title = title;
         this.content = content;
-        this.date = date;
+        this.creation = creation;
     }
 
     /** Publicacion de un post por el usuario */
@@ -125,8 +128,8 @@ public class Post implements Ownable {
         return content;
     }
 
-    public LocalDateTime getDate() {
-        return date;
+    public LocalDateTime getCreation() {
+        return creation;
     }
 
     public Character.@Nullable Summary getAuthorDetails() {
@@ -141,6 +144,10 @@ public class Post implements Ownable {
 
     public void setAuthorDetails(String username, String characterName, int level) {
         this.authorDetails = new Character.Summary(username, author.toHexString(), characterName, level);
+    }
+
+    public void setAuthorDeleted() {
+        this.authorDetails = Character.Summary.deleted();
     }
 
     public void setLikedByCurrentUser(@Nullable Boolean likedByCurrentUser) {
@@ -158,6 +165,7 @@ public class Post implements Ownable {
         return Objects.hashCode(id);
     }
 
+    @JsonIgnore
     @Override
     public String getOwnerId() {
         return author.toHexString();

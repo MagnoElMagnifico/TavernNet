@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Min;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,7 +39,7 @@ public class PostController {
      * @return <code>200 OK</code> con la lista de posts.
      */
     @GetMapping
-    public List<PostView> getPosts(
+    public PagedModel<EntityModel<PostView>> getPosts(
         @RequestParam(value = "search", required = false, defaultValue = "")
         String search,
 
@@ -48,12 +50,12 @@ public class PostController {
         @Min(value = 0, message = "Minimum page is 0")
         int page,
 
-        @RequestParam(value = "count", required = false, defaultValue = "0")
-        @Min(value = 0, message = "Minimum page is 0")
-        @Max(value = 1000, message = "Minimum page is 0")
+        @RequestParam(value = "count", required = false, defaultValue = "10")
+        @Min(value = 1, message = "Minimum posts per page is 1")
+        @Max(value = 100, message = "Maximum posts per page is 100")
         int count
     ) {
-        return posts.getPosts(search, author, page, count);
+        return posts.searchPosts(search, author, page, count);
     }
 
     /**
@@ -64,7 +66,7 @@ public class PostController {
     @PostMapping
     public ResponseEntity<Void> createPost(@RequestBody @Valid Post.PostRequest newPost) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
         ObjectId newId = posts.createPost(newPost);
-        return ResponseEntity.created(Utils.getUrl("getPosts", PostController.class, newId)).build();
+        return ResponseEntity.created(Utils.getUrl("getPost", PostController.class, newId)).build();
     }
 
     /**

@@ -1,13 +1,24 @@
 package tavernnet.service;
 
+import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.stereotype.Service;
 
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 import tavernnet.exception.InvalidCredentialsException;
 import tavernnet.exception.NoCharacterSelectedException;
@@ -30,6 +41,7 @@ public class PostService {
     private final LikesRepository likesRepo;
     private final CommentsRepository commentRepo;
     private final CharacterRepository charRepo;
+    private final PagedResourcesAssembler<PostView> assembler;
 
     @Autowired
     public PostService(
@@ -37,13 +49,14 @@ public class PostService {
         PostsViewRepository postsViewRepo,
         CommentsRepository commentRepo,
         LikesRepository likesRepo,
-        CharacterRepository charRepo
+        CharacterRepository charRepo, PagedResourcesAssembler<PostView> assembler
     ) {
         this.postsRepo = postsRepo;
         this.postsViewRepo = postsViewRepo;
         this.commentRepo = commentRepo;
         this.likesRepo = likesRepo;
         this.charRepo = charRepo;
+        this.assembler = assembler;
     }
 
     // ==== POSTS ==============================================================
@@ -51,7 +64,7 @@ public class PostService {
     /**
      * @return Lista de todos los posts.
      */
-    public List<PostView> getPosts(
+    public PagedModel<EntityModel<PostView>> searchPosts(
         String search,
         String author,
         int page,
@@ -59,16 +72,25 @@ public class PostService {
     ) {
         log.debug("GET /posts?search={}&author={}&page={}&count={}", search, author, page, count);
 
-        // Para saber si el usuario actual le ha dado like, debemos saber qué usuario es
-        User.AuthUser authUser = Utils.getAuthUser();
-        ObjectId postAuthor = authUser == null? null : authUser.activeCharacter();
+        // Crear un documento para filtrar
+        Pattern pattern = search.isBlank()
+            ? Pattern.compile(".*", Pattern.CASE_INSENSITIVE)
+            : Pattern.compile(".*" + Pattern.quote(search) + ".*", Pattern.CASE_INSENSITIVE);
 
-        // Hacemos la búsqueda y añadimos los detalles del personaje autor para
-        // dar más información al cliente. También se configuran los likes.
-        return postsViewRepo.searchPosts(search, author, page, count)
-            .stream()
-            .peek((p) -> { setAuthorDetails(p); setLikedByUser(p, postAuthor); })
-            .toList();
+        Document match = new Document();
+
+        List<Document> orList = new ArrayList<>();
+        orList.add(new Document("title", pattern));
+        orList.add(new Document("content", pattern));
+        match.put("$or", orList);
+
+        // filtro opcional por author
+        if (author != null && !author.isBlank() && ObjectId.isValid(author)) {
+            match.put("author", new ObjectId(author));
+        }
+
+        var root = postsViewRepo.searchPosts(match, page, count);
+        return toPagedModel(root, page, count);
     }
 
     /**
@@ -81,9 +103,10 @@ public class PostService {
         log.debug("GET /posts/{}", idStr);
 
         // Realizar la consulta
-        PostView post =  postsViewRepo
-            .findById(id)
+        Document doc = postsViewRepo
+            .getRawById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Post", idStr));
+        PostView post = getPostFromDoc(doc);
 
         // Configurar detalles del personaje autor
         setAuthorDetails(post);
@@ -130,8 +153,6 @@ public class PostService {
         commentRepo.deleteByPostId(postId);
         likesRepo.deleteByPostId(postId);
     }
-
-    // TODO: PUT
 
     // ==== COMENTARIOS ========================================================
 
@@ -255,6 +276,64 @@ public class PostService {
             character.getUser(),
             character.getName(),
             character.getLevel()
+        );
+    }
+
+    private PagedModel<EntityModel<PostView>> toPagedModel(AggregationResults<Document> root, int pageNumber, int pageSize) {
+        var realRoot = root.getMappedResults().getFirst();
+
+        long totalCount = 0;
+        if (realRoot.get("total_count") instanceof List<?> list
+            && !list.isEmpty()
+            && list.getFirst() instanceof Map<?, ?> map
+            && map.get("count") instanceof Number n) {
+            totalCount = n.longValue();
+        }
+
+        // Para saber si el usuario actual le ha dado like, debemos saber qué usuario es
+        User.AuthUser authUser = Utils.getAuthUser();
+        ObjectId activeChar = authUser == null? null : authUser.activeCharacter();
+
+        List<PostView> pageContent = new ArrayList<>();
+        if (realRoot.get("page_data") instanceof List<?> pageData) {
+            for (Object obj : pageData) {
+                if (!(obj instanceof Document doc)) {
+                    continue;
+                }
+
+                PostView post = getPostFromDoc(doc);
+                setAuthorDetails(post);
+                log.debug("liked by user {}", activeChar);
+                setLikedByUser(post, activeChar);
+
+                pageContent.add(post);
+            }
+        }
+
+        return assembler.toModel(
+            new PageImpl<>(
+                pageContent,
+                PageRequest.of(pageNumber, pageSize),
+                totalCount
+            )
+        );
+    }
+
+    private PostView getPostFromDoc(Document doc) {
+        // Como no hay forma de que Spring Data funcione bien con la herencia
+        // entre Post y PostView (problemas con el campo _class), se crea
+        // manualmente el objeto.
+        return new PostView(
+            doc.getObjectId("_id"),
+            doc.getObjectId("author"),
+            doc.getString("title"),
+            doc.getString("content"),
+            doc.getDate("creation")
+                .toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime(),
+            doc.getInteger("likes"),
+            doc.getInteger("comments")
         );
     }
 }

@@ -187,8 +187,8 @@ public class DatabaseInitializer implements CommandLineRunner {
                     { $lookup: { from: "likes", localField: "_id", foreignField: "post", as: "likes_docs" } },
                     { $lookup: { from: "comments", localField: "_id", foreignField: "post", as: "comments_docs" } },
                     { $addFields: {
-                        n_likes: { $size: "$likes_docs" },
-                        n_comments: { $size: "$comments_docs" }
+                        likes: { $size: "$likes_docs" },
+                        comments: { $size: "$comments_docs" }
                     }},
                     { $project: { likes_docs: 0, comments_docs: 0 } }
                 ]

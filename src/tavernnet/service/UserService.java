@@ -1,9 +1,16 @@
 package tavernnet.service;
 
+import org.bson.Document;
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.hateoas.PagedModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -11,8 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.Objects;
+import java.time.ZoneId;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import tavernnet.exception.*;
@@ -31,6 +38,7 @@ public class UserService implements UserDetailsService {
     private final CharacterRepository charRepo;
     private final UserRefreshTokenRepository userRefreshRepo;
     private final RefreshTokenRepository refreshRepo;
+    private final PagedResourcesAssembler<User.PublicProfile> assembler;
 
     @Autowired
     public UserService(
@@ -38,23 +46,25 @@ public class UserService implements UserDetailsService {
         UserRepository userRepo,
         CharacterRepository charRepo,
         UserRefreshTokenRepository userRefreshRepo,
-        RefreshTokenRepository refreshRepo
+        RefreshTokenRepository refreshRepo,
+        PagedResourcesAssembler<User.PublicProfile> assembler
     ) {
         this.passwordEncoder = passwordEncoder;
         this.userRepo = userRepo;
         this.charRepo = charRepo;
         this.userRefreshRepo = userRefreshRepo;
         this.refreshRepo = refreshRepo;
+        this.assembler = assembler;
     }
 
-    public Pagination<String> getUsers(String searchTerm, int pageNumber, int pageSize) {
+    public PagedModel<EntityModel<User.PublicProfile>> getUsers(String searchTerm, int pageNumber, int pageSize) {
         log.debug("GET /users search={} page={} count={}", searchTerm, pageNumber, pageSize);
         var root = userRepo.searchByUsernameWithCount(
             Pattern.quote(searchTerm),
              pageNumber*pageSize,
              pageSize
         );
-        return Pagination.ofUsernames(root, pageNumber);
+        return toPagedModel(root, pageNumber, pageSize);
     }
 
     public void createUser(
@@ -119,5 +129,42 @@ public class UserService implements UserDetailsService {
         return userRepo
             .findByUsername(username)
             .orElseThrow(() -> new UsernameNotFoundException(username));
+    }
+
+    private PagedModel<EntityModel<User.PublicProfile>> toPagedModel(AggregationResults<Document> root, int pageNumber, int pageSize) {
+        var realRoot = root.getMappedResults().getFirst();
+        long totalCount = 0;
+        if (
+            realRoot.get("total_count") instanceof List<?> list
+                && !list.isEmpty()
+                && list.getFirst() instanceof Map<?, ?> map
+                && map.get("count") instanceof Number n
+        ) {
+            totalCount = n.longValue();
+        }
+
+        // Esto está bien, como mucho procesamos el límite maximo de elementos
+        // permitidos por página, que es 1000.
+        List<User.PublicProfile> pageContent = new ArrayList<>();
+        if (realRoot.get("page_data") instanceof List<?> pageData) {
+            for (Object obj : pageData) {
+                if (!(obj instanceof Document doc)) {
+                    continue;
+                }
+
+                pageContent.add(
+                    new User.PublicProfile(
+                        doc.getString("_id"),
+                        doc.getDate("creation")
+                            .toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime(),
+                        null
+                    )
+                );
+            }
+        }
+
+        return assembler.toModel(new PageImpl<>(pageContent, PageRequest.of(pageNumber, pageSize), totalCount));
     }
 }

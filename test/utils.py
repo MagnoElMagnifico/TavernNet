@@ -60,7 +60,7 @@ number_of_petitions = 0
 
 # ==== FUNCIONES DE IMPRIMIR ==================================================
 
-def _print_summary(r: requests.Response, msg: str | None = None, max_len = 150):
+def _print_summary(r: requests.Response, msg: str | None = None, max_len = 200):
     # Acortar el cuerpo para ver solo la primera parte
     body = r.text[: min(max_len, len(r.text))]
 
@@ -97,7 +97,15 @@ def check(response: requests.Response, allowed: HTTPStatus, msg: str | None = No
         else:
             _print_summary(response, msg=msg)
     else:
-        print(f'\n==== ERROR (unexpected status {allowed} {allowed.phrase}) ====')
+        print(f'\n==== PETITION ERROR: expected status {allowed} {allowed.phrase} ====')
+        _print_response(response)
+        assert False
+
+
+def check_value(response: requests.Response, cond: bool, msg: str | None = None):
+    if not cond:
+        msg = '' if msg is None else ': ' + msg
+        print(f'\n==== CHECK ERROR{msg} ====')
         _print_response(response)
         assert False
 
@@ -112,9 +120,15 @@ def is_valid_objectid(id):
 
 # ==== ARCHIVO DE PALABRAS ====================================================
 
-def random_text(words: list[str], min=3, max=40) -> str:
-    n_words = random.randint(min, max)
-    return ' '.join(random.choice(words) for _ in range(n_words))
+def random_text(words: list[str], mininum=3, maximum=40, max_char=None) -> str:
+    n_words = random.randint(mininum, maximum)
+    random_words = ' '.join(random.choice(words) for _ in range(n_words))
+
+    # Cortar si se ha configurado
+    if max_char is not None:
+        random_words = random_words[: min(max_char, len(random_words))]
+
+    return random_words
 
 
 # ==== PREPARACIÓN DE LOS TESTS ===============================================

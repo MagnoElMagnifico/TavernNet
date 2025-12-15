@@ -133,7 +133,12 @@ public class Character implements Ownable {
         int level
 
         // TODO: profile picture
-    ) {}
+    ) {
+        // En caso de que el personaje se haya borrado, se usa este stub
+        public static Summary deleted() {
+            return new Summary("[Deleted]", "[Deleted]", "[Deleted]", -1);
+        }
+    }
 
     // ==== DTOs ===============================================================
 
@@ -337,6 +342,7 @@ public class Character implements Ownable {
 
     // ==== OTROS MÉTODOS ======================================================
 
+    @JsonIgnore
     @Override
     public String getOwnerId() {
         return user;

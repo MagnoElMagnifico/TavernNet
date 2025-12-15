@@ -1,6 +1,7 @@
 package tavernnet.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -11,8 +12,6 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -47,19 +46,7 @@ public class User implements UserDetails, Ownable {
         // Rol del usuario para generar la lista de authorities
         // `role` en el JWT
         GlobalRole role
-    ) {
-        public AuthUser(String username, GlobalRole role) {
-            this(username, null, role);
-        }
-
-        public Authentication toAuth() {
-            return UsernamePasswordAuthenticationToken.authenticated(
-                this,
-                null,
-                role.asAuthorities()
-            );
-        }
-    }
+    ) {}
 
     // ==== DTOs: RESPONSES ====================================================
 
@@ -67,10 +54,13 @@ public class User implements UserDetails, Ownable {
     public record PublicProfile(
         // TODO: profile picture
         @NotBlank String username,
-        LocalDateTime creation,
+        @Valid LocalDateTime creation,
+
+        @Nullable
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         Collection<Character> characters
     ) {
-        public PublicProfile(User user, Collection<Character> characters) {
+        public PublicProfile(User user, @Nullable Collection<Character> characters) {
             this(
                 user.username,
                 user.creation,
@@ -191,6 +181,7 @@ public class User implements UserDetails, Ownable {
         return role.asAuthorities();
     }
 
+    @JsonIgnore
     @Override
     public String getOwnerId() {
         // El usuario es dueño de si mismo

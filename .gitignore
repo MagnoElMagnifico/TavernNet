@@ -52,6 +52,10 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
+### Python stuff ###
+.venv
+__pycache__
+
 ### Editor files ###
 # IntelliJ IDEA
 .idea

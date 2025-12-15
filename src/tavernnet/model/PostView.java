@@ -1,10 +1,8 @@
 package tavernnet.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Min;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 
@@ -19,14 +17,10 @@ public class PostView extends Post {
     // ==== ATRIBUTOS ==========================================================
 
     @Min(value = 0, message = "Likes must be a positive number")
-    @Field("n_likes")
-    @JsonProperty("n_likes")
-    private final int nLikes;
+    private final int likes;
 
     @Min(value = 0, message = "Comments must be a positive number")
-    @Field("n_comments")
-    @JsonProperty("n_comments")
-    private final int nComments;
+    private final int comments;
 
     // ==== CONSTRUCTORES ======================================================
 
@@ -36,34 +30,34 @@ public class PostView extends Post {
         String title,
         String content,
         LocalDateTime date,
-        int nLikes,
-        int nComments
+        int likes,
+        int comments
     ) {
         super(id, author, title, content, date);
-        this.nLikes = nLikes;
-        this.nComments = nComments;
+        this.likes = likes;
+        this.comments = comments;
     }
 
-    public PostView(Post post, int nLikes, int nComments) {
+    public PostView(Post post, int likes, int comments) {
         this(
             post.getId(),
             post.getAuthor(),
             post.getTitle(),
             post.getContent(),
-            post.getDate(),
-            nLikes,
-            nComments
+            post.getCreation(),
+            likes,
+            comments
         );
     }
 
     // ==== GETTERS ============================================================
 
     public int getLikes() {
-        return nLikes;
+        return likes;
     }
 
     public int getComments() {
-        return nComments;
+        return comments;
     }
 }
 

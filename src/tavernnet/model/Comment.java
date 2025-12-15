@@ -1,5 +1,6 @@
 package tavernnet.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
@@ -8,6 +9,7 @@ import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.PersistenceCreator;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 import tavernnet.utils.ValidObjectId;
@@ -70,6 +72,8 @@ public class Comment implements Ownable {
 
     // ==== CONSTRUCTORES ======================================================
 
+    @PersistenceCreator
+    @JsonCreator
     public Comment(
         @ValidObjectId ObjectId id,
         @ValidObjectId ObjectId post,
@@ -122,6 +126,10 @@ public class Comment implements Ownable {
 
     public void setAuthorDetails(String username, String characterName, int level) {
         this.authorDetails = new Character.Summary(username, author.toHexString(), characterName, level);
+    }
+
+    public void setAuthorDeleted() {
+        this.authorDetails = Character.Summary.deleted();
     }
 
     @Override

@@ -27,7 +27,7 @@ public class Utils {
 
         // Esto no debería ejecutarse nunca si los métodos del controlador están
         // bien anotados con los permisos.
-        if (auth == null || auth.getPrincipal() == null) {
+        if (auth == null || auth.getPrincipal() == null || (auth.getPrincipal() instanceof String s && s.equals("anonymousUser"))) {
             // Lanzar esta excepción para que el status sea 401 / 403
             throw new InvalidCredentialsException(InvalidCredentialsException.CredentialType.JWT, "<empty>");
         }
@@ -37,7 +37,7 @@ public class Utils {
 
     public static User.@Nullable AuthUser getAuthUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getPrincipal() == null) {
+        if (auth == null || auth.getPrincipal() == null || (auth.getPrincipal() instanceof String s && s.equals("anonymousUser"))) {
             return null;
         }
         return (User.AuthUser) auth.getPrincipal();

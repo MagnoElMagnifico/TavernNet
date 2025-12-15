@@ -19,15 +19,15 @@ public interface UserRepository extends MongoRepository<User, String> {
     @Aggregation(pipeline = {
         // el usuario que coincida entero primero
         "{ $match: { '_id': ?0 } }",
-        "{ $project: { '_id': true } }",
+        "{ $project: { '_id': true, 'creation': true } }",
         // luego unir con los que empiecen por ese trozo
         """
         {
             $unionWith: {
                 'coll': 'users',
                 'pipeline': [
-                    { $match: { '_id': /^?0/ } },
-                    { $project: { '_id': true } },
+                    { $match: { '_id': /^?0/i } },
+                    { $project: { '_id': true, 'creation': true } },
                     { $sort: { '_id': 1 } }
                 ]
             }
@@ -39,15 +39,15 @@ public interface UserRepository extends MongoRepository<User, String> {
             $unionWith: {
                 'coll': 'users',
                 'pipeline': [
-                    { $match: { '_id': /?0/ } },
-                    { $project: { '_id': true } },
+                    { $match: { '_id': /?0/i } },
+                    { $project: { '_id': true, 'creation': true } },
                     { $sort: { '_id': 1 } }
                 ]
             }
         }
         """,
         // eliminar duplicados
-        "{ $group: { '_id': '$_id' } }",
+        "{ $group: { '_id': '$_id', 'creation': { $first: '$creation' } } }",
         // elementos de paginación y número de resultados
         """
         {

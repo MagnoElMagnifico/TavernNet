@@ -1,7 +1,7 @@
 import requests
 from http import HTTPStatus
 from .utils import SITE, NEW_USER_PREFIX, CHAR_NAME_NOT_EXISTS, CHAR_EXISTS, USERNAME_NOT_EXISTS, USER_EXISTS, REFRESH_COOKIE, NEW_USER_CHAR_NAME2, INVALID_ID
-from .utils import LoginUser, User, check, is_valid_objectid, setup, end
+from .utils import LoginUser, User, check, check_value, is_valid_objectid, setup, end
 
 # ==== USUARIOS ===============================================================
 
@@ -23,18 +23,37 @@ def test_noauth_user(user: User):
 
     json = r.json()
     # El número de elementos es el mismo que el solicitado
-    assert len(json['page']) <= 7, f'elements in the page is incorrect, got {len(json['page'])}, expected 7 or less'
-    assert json['page_number'] == 0, f'got page_number {json['page_number']}, expected 0'
+    check_value(
+        r,
+        len(json['_embedded']['publicProfileList']) <= 7,
+        msg=f'elements in the page is incorrect, got {len(json['page'])}, expected 7 or less'
+    )
+    check_value(
+        r,
+        json['page']['number'] == 0,
+        msg=f'got page_number {json['page']['number']}, expected 0'
+    )
 
     # Limites de la paginacion
     r = requests.get(f'{SITE}/users?search={NEW_USER_PREFIX}&page=100')
     check(r, HTTPStatus.OK)
     json = r.json()
-    assert len(json['page']) == 0, f'page out of limit gives {len(json['page'])} elements'
+    check_value(r, json.get('_embedded') is None)
 
     # Otros limites
     r = requests.get(f'{SITE}/users?search={NEW_USER_PREFIX}&page=-1')
     check(r, HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    # Término de búsqueda vacío debe devolver todos los usuarios
+    r = requests.get(f'{SITE}/users')
+    check(r, HTTPStatus.OK)
+    json = r.json()
+    check_value(
+        r,
+        json.get('_embedded') is not None and
+        json['_embedded'].get('publicProfileList') is not None,
+        'Empty search returns no users'
+    )
 
     # CREAR USUARIO
     # NOTA: el usuario ya se creó en test_setup()
@@ -61,10 +80,10 @@ def test_noauth_user(user: User):
     print('Received username:', recv_username)
     print('Received character names:', recv_character_names)
     assert user.character is not None, 'User has no character??? Setup failed somehow'
-    assert recv_username == user.username, f'Checking response username, expected {user.username}, got {json.get('username')}'
-    assert len(recv_characters) == 1, f'Expected 1 character, got {len(recv_characters)}'
-    assert len(recv_character_names_set) == len(recv_character_names), f'There are {len(recv_character_names) - len(recv_character_names_set)} repeated names'
-    assert user.character.name in recv_character_names, 'Created character not found in response'
+    check_value(r, recv_username == user.username, f'Checking response username, expected {user.username}, got {json.get('username')}')
+    check_value(r, len(recv_characters) == 1, f'Expected 1 character, got {len(recv_characters)}')
+    check_value(r, len(recv_character_names_set) == len(recv_character_names), f'There are {len(recv_character_names) - len(recv_character_names_set)} repeated names')
+    check_value(r, user.character.name in recv_character_names, 'Created character not found in response')
 
 
 def test_auth_user(login: LoginUser):
@@ -165,16 +184,20 @@ def test_noauth_character(user: User):
     json = r.json()
 
     # Verificar que los IDs están en hexadecimal
-    assert all(is_valid_objectid(character.get('id')) for character in json), 'Found non-hex ID in response'
+    check_value(
+        r,
+        all(is_valid_objectid(character.get('id')) for character in json),
+        'Found non-hex ID in response'
+    )
 
     # Igual que antes
     recv_character_names = list(map(lambda character: character['name'], json))
     recv_character_names_set = set(recv_character_names)
     print('Received character names:', recv_character_names)
-    assert len(recv_character_names) == 1, f'Expected 1 character, got {len(recv_character_names)}'
-    assert len(recv_character_names_set) == len(recv_character_names), f'There are {len(recv_character_names) - len(recv_character_names_set)} repeated names'
+    check_value(r, len(recv_character_names) == 1, f'Expected 1 character, got {len(recv_character_names)}')
+    check_value(r, len(recv_character_names_set) == len(recv_character_names), f'There are {len(recv_character_names) - len(recv_character_names_set)} repeated names')
     assert user.character is not None, 'User has no character??? Setup failed somehow'
-    assert user.character.name in recv_character_names, 'Created character not found in response'
+    check_value(r, user.character.name in recv_character_names, 'Created character not found in response')
 
 
     # CONSULTAR PERSONAJE INDIVIDUAL
@@ -191,7 +214,7 @@ def test_noauth_character(user: User):
     check(r, HTTPStatus.OK)
 
     # Verificar que los IDs están en hexadecimal
-    assert is_valid_objectid(r.json().get('id')), 'Found non-hex ID in response'
+    check_value(r, is_valid_objectid(r.json().get('id')), 'Found non-hex ID in response')
 
 
 def test_auth_characters(login: LoginUser):
@@ -386,7 +409,7 @@ def test_auth_characters(login: LoginUser):
 
     # La API devuelve el personaje actualizado
     stat_strength = r.json().get('stats').get('strength')
-    assert stat_strength == 12, f'Expected 12, got {stat_strength}'
+    check_value(r, stat_strength == 12, f'Expected 12, got {stat_strength}')
 
 
     # BORRAR PERSONAJE

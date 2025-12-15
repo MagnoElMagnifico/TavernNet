@@ -19,10 +19,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import tavernnet.exception.DuplicatedResourceException;
-import tavernnet.exception.InvalidCredentialsException;
-import tavernnet.exception.LimitException;
-import tavernnet.exception.ResourceNotFoundException;
+import tavernnet.exception.*;
 import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 
 import java.net.URI;
@@ -282,6 +279,17 @@ public class ErrorController {
         problem.setTitle("Invalid JSON PATCH");
         problem.setDetail(ex.getMessage());
         problem.setType(getType("limit-exceeded"));
+        return ErrorResponse.builder(ex, problem).build();
+    }
+
+    // La operación require un personaje activo
+    @ExceptionHandler(NoCharacterSelectedException.class)
+    public ErrorResponse handleNotActiveCharacter(NoCharacterSelectedException ex, HttpServletRequest request) {
+        log.warn("No character was selected {}: {}", request.getRequestURI(), ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setTitle("No character was selected");
+        problem.setDetail(ex.getMessage());
+        problem.setType(getType("no-character"));
         return ErrorResponse.builder(ex, problem).build();
     }
 }

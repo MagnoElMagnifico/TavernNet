@@ -6,13 +6,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.PagedModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
-import tavernnet.model.Pagination;
 import tavernnet.model.User;
 import tavernnet.service.UserService;
 import tavernnet.utils.Utils;
@@ -32,7 +33,7 @@ public class UserController {
     // Puede acceder tanto usuarios autenticados como no
     @GetMapping
     @PreAuthorize("true")
-    public Pagination<String> getUsers(
+    public PagedModel<EntityModel<User.PublicProfile>> getUsers(
         @RequestParam(value = "search", required = false, defaultValue = "")
         String searchTerm,
 
