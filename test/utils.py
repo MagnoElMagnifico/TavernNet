@@ -87,15 +87,19 @@ def _print_response(response: requests.Response):
 
 # ==== FUNCIONES DE VALIDACIÓN ================================================
 
-def check(response: requests.Response, allowed: HTTPStatus, msg: str | None = None):
+def check(response: requests.Response, allowed: HTTPStatus, msg: str | None = None, quiet=False):
     global number_of_petitions
     number_of_petitions += 1
 
     if allowed.value == response.status_code:
-        if response.status_code >= 400 and len(response.text) >= 1_000:
-            _print_summary(response, msg='[WARN] response too long' + (': ' + msg if msg is not None else ''))
-        else:
-            _print_summary(response, msg=msg)
+        if not quiet:
+            if response.status_code >= 400 and len(response.text) >= 1_000:
+                _print_summary(
+                    response,
+                    msg='[WARN] response too long' + (': ' + msg if msg is not None else '')
+                )
+            else:
+                _print_summary(response, msg=msg)
     else:
         print(f'\n==== PETITION ERROR: expected status {allowed} {allowed.phrase} ====')
         _print_response(response)
@@ -120,7 +124,7 @@ def is_valid_objectid(id):
 
 # ==== ARCHIVO DE PALABRAS ====================================================
 
-def random_text(words: list[str], mininum=3, maximum=40, max_char=None) -> str:
+def random_text(words: list[str], mininum:int=3, maximum:int=40, max_char:None|int=None) -> str:
     n_words = random.randint(mininum, maximum)
     random_words = ' '.join(random.choice(words) for _ in range(n_words))
 

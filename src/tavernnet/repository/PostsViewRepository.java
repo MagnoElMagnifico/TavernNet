@@ -18,7 +18,7 @@ public interface PostsViewRepository extends MongoRepository<PostView, ObjectId>
 
     @Aggregation(pipeline = {
         "{ $match: ?0 }",
-        "{ $sort: { 'creation': 1 } }",
+        "{ $sort: { 'creation': -1 } }",
         // elementos de paginación y número de resultados
         """
         {

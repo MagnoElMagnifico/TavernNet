@@ -92,7 +92,11 @@ public class UserService implements UserDetailsService {
             .orElseThrow(() -> new ResourceNotFoundException("User", username));
 
         // Obtener los personajes de este usuario
-        Collection<Character> characters = charRepo.getCharactersByUser(username);
+        Collection<Character.Summary> characters = charRepo
+            .getCharactersByUser(username)
+            .stream()
+            .map(Character.Summary::fromCharacter)
+            .toList();
         log.debug("GET /users/{} with {} characters", username, characters.size());
 
         return new User.PublicProfile(user, characters);

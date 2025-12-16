@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.InvalidCredentialsException;
 import tavernnet.exception.NoCharacterSelectedException;
 import tavernnet.exception.ResourceNotFoundException;
@@ -35,13 +37,15 @@ import tavernnet.utils.Utils;
 public class PostService {
 
     private static final Logger log = LoggerFactory.getLogger(PostService.class);
+    private static final int LATEST_COMMENTS = 10;
 
     private final PostsRepository postsRepo;
     private final PostsViewRepository postsViewRepo;
     private final LikesRepository likesRepo;
     private final CommentsRepository commentRepo;
     private final CharacterRepository charRepo;
-    private final PagedResourcesAssembler<PostView> assembler;
+    private final PagedResourcesAssembler<PostView> asmPost;
+    private final PagedResourcesAssembler<Comment> asmComment;
 
     @Autowired
     public PostService(
@@ -49,14 +53,15 @@ public class PostService {
         PostsViewRepository postsViewRepo,
         CommentsRepository commentRepo,
         LikesRepository likesRepo,
-        CharacterRepository charRepo, PagedResourcesAssembler<PostView> assembler
+        CharacterRepository charRepo, PagedResourcesAssembler<PostView> asmPost, PagedResourcesAssembler<Comment> asmComment
     ) {
         this.postsRepo = postsRepo;
         this.postsViewRepo = postsViewRepo;
         this.commentRepo = commentRepo;
         this.likesRepo = likesRepo;
         this.charRepo = charRepo;
-        this.assembler = assembler;
+        this.asmPost = asmPost;
+        this.asmComment = asmComment;
     }
 
     // ==== POSTS ==============================================================
@@ -70,7 +75,7 @@ public class PostService {
         int page,
         int count
     ) {
-        log.debug("GET /posts?search={}&author={}&page={}&count={}", search, author, page, count);
+        log.debug("GET /posts search={} author={} page={} count={}", search, author, page, count);
 
         // Crear un documento para filtrar
         Pattern pattern = search.isBlank()
@@ -108,13 +113,10 @@ public class PostService {
             .orElseThrow(() -> new ResourceNotFoundException("Post", idStr));
         PostView post = getPostFromDoc(doc);
 
-        // Configurar detalles del personaje autor
-        setAuthorDetails(post);
-
-        // Para saber si el usuario actual le ha dado like, debemos saber qué usuario es
+        // Completar con los datos que faltan
         User.AuthUser authUser = Utils.getAuthUser();
         ObjectId postAuthor = authUser == null? null : authUser.activeCharacter();
-        setLikedByUser(post, postAuthor);
+        completePost(post, postAuthor);
 
         return post;
     }
@@ -135,7 +137,7 @@ public class PostService {
 
         Post realPost = new Post(newPost, user.activeCharacter());
         realPost = postsRepo.save(realPost);
-        log.info("Created post with id '{}' by '{}'", realPost.getId(), user.activeCharacter());
+        log.debug("POST /posts/{} by character='{}'", realPost.getId(), user.activeCharacter());
 
         return realPost.getId();
     }
@@ -145,6 +147,7 @@ public class PostService {
      * @throws ResourceNotFoundException Si el ID no existe
      */
     public void deletePost(ObjectId postId) throws ResourceNotFoundException {
+        log.debug("DELETE /posts/{}", postId);
         postsRepo
             .deletePostById(postId)
             .orElseThrow(() -> new ResourceNotFoundException("Post", String.valueOf(postId)));
@@ -152,6 +155,8 @@ public class PostService {
         // Borrar en cascada los elementos asociados al post
         commentRepo.deleteByPostId(postId);
         likesRepo.deleteByPostId(postId);
+
+        log.debug("DELETE /posts/{} delete comments and likes of post", postId);
     }
 
     // ==== COMENTARIOS ========================================================
@@ -161,19 +166,25 @@ public class PostService {
      * @return Lista de comentarios del post especificado
      * @throws ResourceNotFoundException Si el ID no existe
      */
-    public List<Comment> getCommentsByPost(ObjectId postId) throws ResourceNotFoundException {
+    public PagedModel<EntityModel<Comment>> getCommentsByPost(ObjectId postId, int page, int count) throws ResourceNotFoundException {
         // Buscar si existe un post con este ID
         if (!postsRepo.existsById(postId)) {
             throw new ResourceNotFoundException("Post", String.valueOf(postId));
         }
 
-        // Obtener la lista de comentarios
-        return commentRepo
-            .getCommentsByPost(postId)
-            .orElseThrow(() -> new ResourceNotFoundException("Post", String.valueOf(postId)))
-            .stream()
-            .peek(this::setAuthorDetails)
-            .toList();
+        // Obtener la lista de comentarios (paginado)
+        var comments = commentRepo
+            .getCommentsByPost(
+                postId,
+                // TODO: esto sale en el JSON por hateoas, pero no soportamos queries sort
+                PageRequest.of(page, count, Sort.by(Sort.Direction.DESC, "creation"))
+            )
+            .orElseThrow(() -> new ResourceNotFoundException("Post", String.valueOf(postId)));
+
+        // Añadir detalles del autor
+        comments.forEach(this::setAuthorDetails);
+
+        return asmComment.toModel(comments);
     }
 
     /**
@@ -203,15 +214,13 @@ public class PostService {
         Comment comment = new Comment(postId, user.activeCharacter(), newComment);
         comment = commentRepo.save(comment);
 
-        log.info("Created comment in post '{}' by '{}'", postId, user.activeCharacter().toHexString());
+        log.debug("POST /posts/{}/comments new comment by character='{}'", postId, user.activeCharacter().toHexString());
         return comment.getId();
     }
 
-    // TODO: put delete
-
     // ==== LIKES ==============================================================
 
-    public void giveLike(ObjectId postId) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+    public void giveLike(ObjectId postId) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException, DuplicatedResourceException {
         User.AuthUser user = Utils.safeGetAuthUser();
         if (user.activeCharacter() == null) {
             throw new NoCharacterSelectedException();
@@ -223,13 +232,17 @@ public class PostService {
 
         if (!charRepo.existsById(user.activeCharacter())) {
             throw new ResourceNotFoundException("Character", user.activeCharacter().toHexString());
+        }
+
+        if (likesRepo.existsLike(postId, user.activeCharacter())) {
+            throw new DuplicatedResourceException(null, "Like", postId.toHexString());
         }
 
         likesRepo.addLike(postId, user.activeCharacter());
-        log.info("Character '{}' gave like to post '{}'", user.activeCharacter().toHexString(), postId);
+        log.debug("POST /posts/{}/like character='{}' gave like to post", postId, user.activeCharacter().toHexString());
     }
 
-    public void removeLike(ObjectId postId) throws ResourceNotFoundException, NoCharacterSelectedException, InvalidCredentialsException {
+    public void removeLike(ObjectId postId) throws ResourceNotFoundException, NoCharacterSelectedException, InvalidCredentialsException, DuplicatedResourceException {
         User.AuthUser user = Utils.safeGetAuthUser();
         if (user.activeCharacter() == null) {
             throw new NoCharacterSelectedException();
@@ -243,41 +256,16 @@ public class PostService {
             throw new ResourceNotFoundException("Character", user.activeCharacter().toHexString());
         }
 
+        if (!likesRepo.existsLike(postId, user.activeCharacter())) {
+            // TODO: no es la excepcion mas apropiada para esto, pero por ahora sirve (debe devolver 409 Conflict)
+            throw new DuplicatedResourceException(null, "Like", postId.toHexString());
+        }
+
         likesRepo.removeLike(postId, user.activeCharacter());
-        log.info("Character '{}' removed like to post '{}'", user.activeCharacter().toHexString(), postId);
+        log.debug("DELETE /posts/{}/like character='{}' removed like to post", postId, user.activeCharacter().toHexString());
     }
 
     // ==== FUNCIONES DE AYUDA =================================================
-
-    private void setLikedByUser(Post post, @Nullable ObjectId author) {
-        post.setLikedByCurrentUser(
-            author == null
-                ? null
-                : likesRepo.existsLike(post.getId(), author)
-        );
-    }
-
-    private void setAuthorDetails(Post post) {
-        Character character = charRepo
-            .findById(post.getAuthor())
-            .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character"));
-        post.setAuthorDetails(
-            character.getUser(),
-            character.getName(),
-            character.getLevel()
-        );
-    }
-
-    private void setAuthorDetails(Comment comment) {
-        Character character = charRepo
-            .findById(comment.getAuthor())
-            .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character"));
-        comment.setAuthorDetails(
-            character.getUser(),
-            character.getName(),
-            character.getLevel()
-        );
-    }
 
     private PagedModel<EntityModel<PostView>> toPagedModel(AggregationResults<Document> root, int pageNumber, int pageSize) {
         var realRoot = root.getMappedResults().getFirst();
@@ -302,20 +290,59 @@ public class PostService {
                 }
 
                 PostView post = getPostFromDoc(doc);
-                setAuthorDetails(post);
-                log.debug("liked by user {}", activeChar);
-                setLikedByUser(post, activeChar);
+                completePost(post, activeChar);
 
                 pageContent.add(post);
             }
         }
 
-        return assembler.toModel(
+        return asmPost.toModel(
             new PageImpl<>(
                 pageContent,
                 PageRequest.of(pageNumber, pageSize),
                 totalCount
             )
+        );
+    }
+
+    // Para minimizar el número de llamadas a la API desde el frontend, se
+    // añaden algunos datos extra.
+    private void completePost(Post post, @Nullable ObjectId author) {
+        // Más info sobre el autor
+        Character character = charRepo
+            .findById(post.getAuthor())
+            .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character"));
+        post.setAuthorDetails(
+            character.getUser(),
+            character.getName(),
+            character.getLevel()
+        );
+
+        // Ver si el usuario actual ha dado like
+        post.setLikedByCurrentUser(
+            author == null
+                ? null
+                : likesRepo.existsLike(post.getId(), author)
+        );
+
+        // Completar con los primeros comentarios
+        post.setLatestComments(
+            commentRepo
+                .getLatestComments(post.getId(), LATEST_COMMENTS)
+                .stream()
+                .peek(this::setAuthorDetails) // completar los detalles de cada comentario
+                .toList()
+        );
+    }
+
+    private void setAuthorDetails(Comment comment) {
+        Character character = charRepo
+            .findById(comment.getAuthor())
+            .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character"));
+        comment.setAuthorDetails(
+            character.getUser(),
+            character.getName(),
+            character.getLevel()
         );
     }
 

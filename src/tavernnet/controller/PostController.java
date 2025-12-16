@@ -9,8 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.InvalidCredentialsException;
 import tavernnet.exception.NoCharacterSelectedException;
 import tavernnet.exception.ResourceNotFoundException;
@@ -20,8 +22,6 @@ import tavernnet.model.PostView;
 import tavernnet.service.PostService;
 import tavernnet.utils.Utils;
 import tavernnet.utils.ValidObjectId;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("posts")
@@ -39,6 +39,7 @@ public class PostController {
      * @return <code>200 OK</code> con la lista de posts.
      */
     @GetMapping
+    @PreAuthorize("true")
     public PagedModel<EntityModel<PostView>> getPosts(
         @RequestParam(value = "search", required = false, defaultValue = "")
         String search,
@@ -64,6 +65,7 @@ public class PostController {
      * @return <code>201 Created</code> en éxito.
      */
     @PostMapping
+    @PreAuthorize("isAuthenticated() and principal.activeCharacter != null")
     public ResponseEntity<Void> createPost(@RequestBody @Valid Post.PostRequest newPost) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
         ObjectId newId = posts.createPost(newPost);
         return ResponseEntity.created(Utils.getUrl("getPost", PostController.class, newId)).build();
@@ -76,6 +78,7 @@ public class PostController {
      * found</code> si no existe el ID proporcionado.
      */
     @GetMapping("{postid}")
+    @PreAuthorize("true")
     public PostView getPost(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid postId to retrieve")
@@ -90,8 +93,8 @@ public class PostController {
      * @return <code>204 No content</code> en éxito, <code>404 Not found</code>
      * si no existe el ID proporcionado.
      */
-    // TODO: errores de permisos
     @DeleteMapping("{postid}")
+    @PreAuthorize("hasRole('ADMIN') or @auth.isCharOwner('posts', #postId, principal)")
     public ResponseEntity<Void> deletePost(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid postId to retrieve")
@@ -102,22 +105,24 @@ public class PostController {
     }
 
     @PostMapping("{postid}/like")
+    @PreAuthorize("isAuthenticated() and principal.activeCharacter != null")
     public ResponseEntity<Void> giveLike(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid post id")
         ObjectId postId
-    ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+    ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException, DuplicatedResourceException {
         posts.giveLike(postId);
         return ResponseEntity.created(Utils.getUrl("getPost", PostController.class, postId)).build();
     }
 
     // TODO: error de si el usuario no habia dado like antes
     @DeleteMapping("{postid}/like")
+    @PreAuthorize("isAuthenticated() and principal.activeCharacter != null")
     public ResponseEntity<Void> removeLike(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid post id")
         ObjectId postId
-    ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+    ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException, DuplicatedResourceException {
         posts.removeLike(postId);
         return ResponseEntity.noContent().build();
     }
@@ -130,12 +135,22 @@ public class PostController {
      */
     // TODO: paginacion si hay muchos comentarios
     @GetMapping("{postid}/comments")
-    public List<Comment> getCommentsByPost(
+    @PreAuthorize("true")
+    public PagedModel<EntityModel<Comment>> getCommentsByPost(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid postId to retrieve comments from")
-        ObjectId postId
+        ObjectId postId,
+
+        @RequestParam(value = "page", required = false, defaultValue = "0")
+        @Min(value = 0, message = "Minimum page is 0")
+        int page,
+
+        @RequestParam(value = "count", required = false, defaultValue = "10")
+        @Min(value = 1, message = "Minimum posts per page is 1")
+        @Max(value = 100, message = "Maximum posts per page is 100")
+        int count
     ) throws ResourceNotFoundException {
-        return posts.getCommentsByPost(postId);
+        return posts.getCommentsByPost(postId, page, count);
     }
 
     /**
@@ -146,6 +161,7 @@ public class PostController {
      * no existe el ID proporcionado.
      */
     @PostMapping("{postid}/comments")
+    @PreAuthorize("isAuthenticated() and principal.activeCharacter != null")
     public ResponseEntity<Void> createComment(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid post id")
@@ -154,6 +170,6 @@ public class PostController {
         Comment.CommentRequest newComment
     ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
         ObjectId commentId = posts.createComment(postId, newComment);
-        return ResponseEntity.created(Utils.getUrl("getCommentsByPost", PostController.class, postId, commentId)).build();
+        return ResponseEntity.created(Utils.getUrl("getCommentsByPost", PostController.class, postId, 0, 1)).build();
     }
 }

@@ -58,9 +58,9 @@ public class User implements UserDetails, Ownable {
 
         @Nullable
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        Collection<Character> characters
+        Collection<Character.Summary> characters
     ) {
-        public PublicProfile(User user, @Nullable Collection<Character> characters) {
+        public PublicProfile(User user, @Nullable Collection<Character.Summary> characters) {
             this(
                 user.username,
                 user.creation,
@@ -85,7 +85,7 @@ public class User implements UserDetails, Ownable {
         Duration expiresIn
     ) {}
 
-    // ==== DTOs: LOGIN ========================================================
+    // ==== DTOs: REQUESTS =====================================================
 
     /** DTO de lo que envia el usuario cuando quiere iniciar sesion  */
     public record LoginRequest (

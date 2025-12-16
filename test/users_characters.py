@@ -174,7 +174,6 @@ def test_noauth_character(user: User):
     # CONSULTAR PERSONAJES
     print('\n==== CHARACTERS ====')
 
-    # TODO: pendiente de borrar: esta operación es redundante ya que esta misma información se ve en /users/{id}
     r = requests.get(f'{SITE}/users/{USERNAME_NOT_EXISTS}/characters')
     check(r, HTTPStatus.NOT_FOUND)
 
@@ -437,8 +436,6 @@ def test_auth_characters(login: LoginUser):
     # - Posts/comentarios: aún existen, pero el autor aparece como borrado/null/...
     # - Parties: salirse de la party
     #
-    # TODO: implementar GET /posts?author=
-    # TODO: implementar GET /comments?author= o similar
     # TODO: implementar GET /parties?member= o similar
     #
     # # Posts del personaje

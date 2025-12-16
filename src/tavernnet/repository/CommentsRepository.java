@@ -3,29 +3,37 @@ package tavernnet.repository;
 import jakarta.validation.constraints.NotNull;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.Optional;
-import java.util.List;
 
 import tavernnet.model.Comment;
 
 @Repository
 @NullMarked
 public interface CommentsRepository extends MongoRepository<Comment, ObjectId> {
-    // TODO: ordenar por fecha
-
     /**
      * Obtiene todos los comentarios de un post concreto.
      * @param postId ID del post al que pertenecen los comentarios.
      */
-    @Query("{ '_id.post': ?0 }")
-    Optional<List<Comment>> getCommentsByPost(ObjectId postId);
+    @Query("{ 'post': ?0 }")
+    Optional<Page<Comment>> getCommentsByPost(ObjectId postId, Pageable page);
 
-    @Query(value = "{ 'id_post': ?0 }", delete = true)
+    @Query(value = "{ 'post': ?0 }", delete = true)
     void deleteByPostId(ObjectId postId);
+
+    @Aggregation(pipeline = {
+        "{ $match: { 'post': ?0 } }",
+        "{ $sort: { 'creation': -1 }}",
+        "{ $limit: ?1 }"
+    })
+    Collection<Comment> getLatestComments(ObjectId postId, int number);
 
     /**
      * @param comment Guarda el nuevo comentario en la base de datos.

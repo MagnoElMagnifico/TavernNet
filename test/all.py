@@ -1,7 +1,8 @@
 from .login import test_login
 from .parties import test_parties
 from .posts import test_posts
-from .users_characters import *
+from .users_characters import test_noauth_character, test_noauth_user, test_auth_characters, test_auth_user
+from .model import test_model
 from .utils import setup, end
 
 
@@ -26,6 +27,10 @@ if __name__ == '__main__':
     print('\n==== AUTH: USER AND CARACTERS ===================================')
     test_auth_characters(user)
     test_auth_user(user)
+
+
+    print('\n==== MODEL ======================================================')
+    test_model()
 
     end()
 

@@ -55,7 +55,7 @@ public class UserController {
         int pageNumber,
 
         @RequestParam(value = "count", required = false, defaultValue = "10")
-        @Min(value = 5, message = "Minimum page size is 5")
+        @Min(value = 1, message = "Minimum page size is 1")
         @Max(value = 1000, message = "Maximum page size is 1000")
         int pageSize
     ) {

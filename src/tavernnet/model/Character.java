@@ -134,6 +134,15 @@ public class Character implements Ownable {
 
         // TODO: profile picture
     ) {
+        public static Summary fromCharacter(Character character) {
+            return new Summary(
+                character.getUser(),
+                character.getId().toHexString(),
+                character.getName(),
+                character.getLevel()
+            );
+        }
+
         // En caso de que el personaje se haya borrado, se usa este stub
         public static Summary deleted() {
             return new Summary("[Deleted]", "[Deleted]", "[Deleted]", -1);

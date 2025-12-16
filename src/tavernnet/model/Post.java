@@ -11,11 +11,13 @@ import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.PersistenceCreator;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 import tavernnet.utils.ValidObjectId;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Objects;
 
 @Document(collection = "posts")
@@ -56,11 +58,6 @@ public class Post implements Ownable {
     @Transient
     private final String idStr;
 
-    @Valid
-    @JsonProperty("author")
-    @Transient
-    private Character.@Nullable Summary authorDetails;
-
     // Payload: copiados de lo que ha enviado el usuario
     @NotBlank(message = "Title must be not null or blank")
     @Size(max = 64, message = "Post title maximum length is 64 characters")
@@ -83,8 +80,22 @@ public class Post implements Ownable {
 
     // TODO: content image
 
+
+    @Valid
+    @JsonProperty("author")
+    @Transient
+    private Character.@Nullable Summary authorDetails;
+
+    // Mostrar los primeros comentarios en la respuesta
+    @Nullable
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonProperty("latest_comments")
+    private Collection<Comment> latestComments;
+
     // ==== CONSTRUCTORES ======================================================
 
+    @PersistenceCreator
     public Post(
         @ValidObjectId ObjectId id,
         @ValidObjectId ObjectId author,
@@ -140,6 +151,10 @@ public class Post implements Ownable {
         return likedByCurrentUser;
     }
 
+    public @Nullable Collection<Comment> getLatestComments() {
+        return latestComments;
+    }
+
     // ==== OTROS MÉTODOS ======================================================
 
     public void setAuthorDetails(String username, String characterName, int level) {
@@ -148,6 +163,10 @@ public class Post implements Ownable {
 
     public void setAuthorDeleted() {
         this.authorDetails = Character.Summary.deleted();
+    }
+
+    public void setLatestComments(Collection<Comment> comments) {
+        latestComments = comments;
     }
 
     public void setLikedByCurrentUser(@Nullable Boolean likedByCurrentUser) {

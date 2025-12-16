@@ -1,5 +1,6 @@
 package tavernnet.utils;
 
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -9,6 +10,7 @@ import tavernnet.model.User;
 
 import java.net.URI;
 
+@NullMarked
 public class Utils {
     public static URI getUrl(String methodName, Class<?> clazz, Object args) {
         return MvcUriComponentsBuilder.fromMethodName(clazz, methodName, args)
@@ -18,6 +20,12 @@ public class Utils {
 
     public static URI getUrl(String methodName, Class<?> clazz, Object arg1, Object arg2) {
         return MvcUriComponentsBuilder.fromMethodName(clazz, methodName, arg1, arg2)
+            .build()
+            .toUri();
+    }
+
+    public static URI getUrl(String methodName, Class<?> clazz, Object arg1, Object arg2, Object arg3) {
+        return MvcUriComponentsBuilder.fromMethodName(clazz, methodName, arg1, arg2, arg3)
             .build()
             .toUri();
     }

@@ -319,10 +319,15 @@ public class AuthService {
         }
 
         log.debug(
-            "Character owner of \"{}\" is \"{}\" AuthUser=\"{}\" Collection=\"{}\"",
-            objectId, resource.getOwnerId(), user.username(), collection
+            "Character owner of \"{}\" is \"{}\" AuthUser=\"{}\" ActiveChar=\"{}\" Collection=\"{}\"",
+            objectId, resource.getOwnerId(), user.username(), user.activeCharacter(), collection
         );
-        return resource.getOwnerId().equals(user.activeCharacter());
+
+        if (user.activeCharacter() == null) {
+            return false;
+        }
+
+        return resource.getOwnerId().equals(user.activeCharacter().toHexString());
     }
 
     public boolean isCharacterOwnerByName(String userId, String characterName, User.AuthUser user) throws ResourceNotFoundException {
@@ -334,6 +339,11 @@ public class AuthService {
         if (c == null) {
             throw new ResourceNotFoundException("Character", characterName);
         }
+
+        log.debug(
+            "Character owner of \"{}\" is \"{}\" AuthUser=\"{}\" ActiveChar=\"{}\"",
+            userId, c.getOwnerId(), user.username(), user.activeCharacter()
+        );
 
         return c.getOwnerId().equals(user.username());
     }

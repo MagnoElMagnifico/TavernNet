@@ -68,7 +68,7 @@ public class Comment implements Ownable {
 
     // Configurado al crear un nuevo post
     @NotNull(message = "Comment date must be not null")
-    private final LocalDateTime date;
+    private final LocalDateTime creation;
 
     // ==== CONSTRUCTORES ======================================================
 
@@ -79,13 +79,13 @@ public class Comment implements Ownable {
         @ValidObjectId ObjectId post,
         @ValidObjectId ObjectId author,
         @NotBlank String content,
-        @NotBlank LocalDateTime date
+        @NotBlank LocalDateTime creation
     ) {
         this.id = id;
         this.post = post;
         this.author = author;
         this.content = content;
-        this.date = date;
+        this.creation = creation;
     }
 
     public Comment(
@@ -114,8 +114,8 @@ public class Comment implements Ownable {
         return content;
     }
 
-    public LocalDateTime getDate() {
-        return date;
+    public LocalDateTime getCreation() {
+        return creation;
     }
 
     public Character.@Nullable Summary getAuthorDetails() {
