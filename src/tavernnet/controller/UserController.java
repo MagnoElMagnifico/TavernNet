@@ -1,13 +1,20 @@
 package tavernnet.controller;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.hateoas.MediaTypes;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.EntityLinks;
+import org.springframework.hateoas.server.ExposesResourceFor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -18,22 +25,28 @@ import tavernnet.model.User;
 import tavernnet.service.UserService;
 import tavernnet.utils.Utils;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
+
 @RestController
 @RequestMapping("users")
+@ExposesResourceFor(User.class)
 @NullMarked
 public class UserController {
-    private final UserService user;
+    private final UserService userService;
+    private final EntityLinks entityLinks;
 
     @Autowired
-    public UserController(UserService user) {
-        this.user = user;
+    public UserController(UserService user, EntityLinks entityLinks) {
+        this.userService = user;
+        this.entityLinks = entityLinks;
     }
 
     // Servicio para obtener todos los usuarios.
     // Puede acceder tanto usuarios autenticados como no
-    @GetMapping
+    @GetMapping(produces = MediaTypes.HAL_JSON_VALUE)
+    @JsonView(User.class)
     @PreAuthorize("true")
-    public PagedModel<EntityModel<User.PublicProfile>> getUsers(
+    public ResponseEntity<PagedModel<User.PublicProfile>> getUsers(
         @RequestParam(value = "search", required = false, defaultValue = "")
         String searchTerm,
 
@@ -46,26 +59,68 @@ public class UserController {
         @Max(value = 1000, message = "Maximum page size is 1000")
         int pageSize
     ) {
-        return user.getUsers(searchTerm, pageNumber, pageSize);
+        var users = userService.getUsers(
+            PageRequest.of(
+                pageNumber,
+                pageSize
+            )
+        );
+
+        PagedModel<User.PublicProfile> response = PagedModel.of(
+            users.getContent(), new PagedModel.PageMetadata(users.getSize(),
+                users.getNumber(), users.getTotalElements(),
+                users.getTotalPages()));
+
+        // Links de hateoas
+
+        response.add(linkTo(
+            methodOn(UserController.class).getUsers(searchTerm, pageNumber, pageSize)
+        ).withSelfRel());
+
+        if(pageNumber < users.getTotalPages() - 1)
+            response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
+            pageNumber + 1, pageSize)).withRel(IanaLinkRelations.NEXT));
+
+        if(pageNumber > 0)
+            response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
+            pageNumber - 1, pageSize)).withRel(IanaLinkRelations.PREVIOUS));
+
+        response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
+            0, pageSize)).withRel(IanaLinkRelations.FIRST));
+
+        response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
+            users.getTotalPages() - 1, pageSize)).withRel(IanaLinkRelations.LAST));
+
+        return ResponseEntity.ok(response);
     }
 
     // Servicio para crear un nuevo usuario
-    @PostMapping
+    @PostMapping(
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
     @PreAuthorize("true")
     public ResponseEntity<Void> addUser(
         @RequestBody @Valid User.LoginRequest request
     ) throws DuplicatedResourceException {
-        user.createUser(request);
+        userService.createUser(request);
         return ResponseEntity.created(Utils.getUrl("getUser", UserController.class, request.username())).build();
     }
 
     // Servicio para obtener un usuario por ID
-    @GetMapping("{userid}")
+    @GetMapping(
+        path = "{userid}",
+        produces = MediaTypes.HAL_JSON_VALUE
+    )
+    @JsonView(User.class)
     @PreAuthorize("true")
-    public User.PublicProfile getUser(
+    public ResponseEntity<EntityModel<User.PublicProfile>> getUser(
         @PathVariable("userid") @NotBlank String id
     ) throws ResourceNotFoundException {
-        return user.getUser(id);
+        EntityModel<User.PublicProfile> response = EntityModel.of(userService.getUser(id));
+        response.add(entityLinks.linkToItemResource(User.class, id).withSelfRel());
+        response.add(entityLinks.linkToCollectionResource(User.class).withRel(IanaLinkRelations.COLLECTION));
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -81,7 +136,7 @@ public class UserController {
         @NotBlank(message = "Missing username to retrieve")
         String username
     ) throws ResourceNotFoundException {
-        user.deleteUser(username);
+        userService.deleteUser(username);
         return ResponseEntity.noContent().build();
     }
 }

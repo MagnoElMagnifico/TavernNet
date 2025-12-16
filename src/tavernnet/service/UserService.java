@@ -2,9 +2,12 @@ package tavernnet.service;
 
 import org.bson.Document;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
@@ -57,14 +60,12 @@ public class UserService implements UserDetailsService {
         this.assembler = assembler;
     }
 
-    public PagedModel<EntityModel<User.PublicProfile>> getUsers(String searchTerm, int pageNumber, int pageSize) {
-        log.debug("GET /users search={} page={} count={}", searchTerm, pageNumber, pageSize);
-        var root = userRepo.searchByUsernameWithCount(
-            Pattern.quote(searchTerm),
-             pageNumber*pageSize,
-             pageSize
-        );
-        return toPagedModel(root, pageNumber, pageSize);
+    public Page<User.PublicProfile> getUsers(PageRequest page) {
+        //log.debug("GET /users search={} page={} count={}", searchTerm, pageNumber, pageSize);
+        return userRepo.findAll(page).map(user -> new User.PublicProfile(
+            user.getOwnerId(),
+            user.getCreation(),
+            null));
     }
 
     public void createUser(
@@ -131,7 +132,7 @@ public class UserService implements UserDetailsService {
             .orElseThrow(() -> new UsernameNotFoundException(username));
     }
 
-    private PagedModel<EntityModel<User.PublicProfile>> toPagedModel(AggregationResults<Document> root, int pageNumber, int pageSize) {
+    /*private PagedModel<EntityModel<User.PublicProfile>> toPagedModel(AggregationResults<Document> root, int pageNumber, int pageSize) {
         var realRoot = root.getMappedResults().getFirst();
         long totalCount = 0;
         if (
@@ -166,5 +167,5 @@ public class UserService implements UserDetailsService {
         }
 
         return assembler.toModel(new PageImpl<>(pageContent, PageRequest.of(pageNumber, pageSize), totalCount));
-    }
+    }*/
 }
