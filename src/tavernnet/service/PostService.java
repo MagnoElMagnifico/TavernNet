@@ -97,7 +97,6 @@ public class PostService {
 
         var root = postsViewRepo.searchPosts(match, page, count);
         return toPage(root, page, count);
-        //return toPagedModel(root, page, count);
     }
 
     /**
@@ -168,7 +167,7 @@ public class PostService {
      * @return Lista de comentarios del post especificado
      * @throws ResourceNotFoundException Si el ID no existe
      */
-    public PagedModel<EntityModel<Comment>> getCommentsByPost(ObjectId postId, int page, int count) throws ResourceNotFoundException {
+    public Page<Comment> getCommentsByPost(ObjectId postId, int page, int count) throws ResourceNotFoundException {
         // Buscar si existe un post con este ID
         if (!postsRepo.existsById(postId)) {
             throw new ResourceNotFoundException("Post", String.valueOf(postId));
@@ -186,7 +185,7 @@ public class PostService {
         // Añadir detalles del autor
         comments.forEach(this::setAuthorDetails);
 
-        return asmComment.toModel(comments);
+        return comments;
     }
 
     /**

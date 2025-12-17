@@ -1,5 +1,6 @@
 package tavernnet.controller;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -8,7 +9,11 @@ import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.hateoas.MediaTypes;
 import org.springframework.hateoas.PagedModel;
+import org.springframework.hateoas.server.EntityLinks;
+import org.springframework.hateoas.server.ExposesResourceFor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +25,7 @@ import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Comment;
 import tavernnet.model.Post;
 import tavernnet.model.PostView;
+import tavernnet.model.User;
 import tavernnet.service.PostService;
 import tavernnet.utils.Utils;
 import tavernnet.utils.ValidObjectId;
@@ -29,13 +35,16 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("posts")
+@ExposesResourceFor(Post.class)
 @NullMarked
 public class PostController {
     PostService posts;
+    private final EntityLinks entityLinks;
 
     @Autowired
-    public PostController(PostService posts) {
+    public PostController(PostService posts, EntityLinks entityLinks) {
         this.posts = posts;
+        this.entityLinks = entityLinks;
     }
 
     /**
@@ -43,6 +52,7 @@ public class PostController {
      * @return <code>200 OK</code> con la lista de posts.
      */
     @GetMapping
+    @JsonView(PostView.class)
     @PreAuthorize("true")
     public ResponseEntity<PagedModel<PostView>> getPosts(
         @RequestParam(value = "search", required = false, defaultValue = "")
@@ -101,7 +111,10 @@ public class PostController {
      * @param newPost Nueva publicación.
      * @return <code>201 Created</code> en éxito.
      */
-    @PostMapping
+    @PostMapping(
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
     @PreAuthorize("isAuthenticated() and principal.activeCharacter != null")
     public ResponseEntity<Void> createPost(@RequestBody @Valid Post.PostRequest newPost) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
         ObjectId newId = posts.createPost(newPost);
@@ -114,14 +127,31 @@ public class PostController {
      * @return <code>200 OK</code> con el post solicitado, <code>404 Not
      * found</code> si no existe el ID proporcionado.
      */
-    @GetMapping("{postid}")
+    @GetMapping(
+        path = "{postid}",
+        produces = MediaTypes.HAL_JSON_VALUE)
+    @JsonView(PostView.class)
     @PreAuthorize("true")
-    public PostView getPost(
+    public ResponseEntity<EntityModel<PostView>> getPost(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid postId to retrieve")
         ObjectId postId
     ) throws ResourceNotFoundException {
-        return posts.getPost(postId);
+        EntityModel<PostView> response = EntityModel.of(posts.getPost(postId));
+
+        // Links de hateoas
+        response.add(entityLinks.linkToItemResource(Post.class, postId).withSelfRel());
+
+        response.add(entityLinks.linkToCollectionResource(Post.class).withRel(
+            IanaLinkRelations.COLLECTION));
+
+        response.add(entityLinks.linkToItemResource(Post.class,
+            response.getContent().getAuthor()).withRel(IanaLinkRelations.AUTHOR));
+
+        response.add(linkTo(methodOn(PostController.class).getCommentsByPost(
+            postId,0,10)).withRel("comments"));
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -171,23 +201,56 @@ public class PostController {
      * no existe el ID proporcionado.
      */
     // TODO: paginacion si hay muchos comentarios
-    @GetMapping("{postid}/comments")
+    @GetMapping(
+        path = "{postid}/comments",
+        produces = MediaTypes.HAL_JSON_VALUE)
+    @JsonView(Comment.class)
     @PreAuthorize("true")
-    public PagedModel<EntityModel<Comment>> getCommentsByPost(
+    public ResponseEntity<PagedModel<Comment>> getCommentsByPost(
         @PathVariable("postid")
         @ValidObjectId(message = "Invalid postId to retrieve comments from")
         ObjectId postId,
 
         @RequestParam(value = "page", required = false, defaultValue = "0")
         @Min(value = 0, message = "Minimum page is 0")
-        int page,
+        int pageNumber,
 
         @RequestParam(value = "count", required = false, defaultValue = "10")
         @Min(value = 1, message = "Minimum posts per page is 1")
         @Max(value = 100, message = "Maximum posts per page is 100")
-        int count
+        int pageSize
     ) throws ResourceNotFoundException {
-        return posts.getCommentsByPost(postId, page, count);
+        var found_comments = posts.getCommentsByPost(postId, pageNumber, pageSize);
+        PagedModel<Comment> response = PagedModel.of(
+            found_comments.getContent(),
+            new PagedModel.PageMetadata(found_comments.getSize(),
+                found_comments.getNumber(),
+                found_comments.getTotalElements(),
+                found_comments.getTotalPages())
+        );
+
+        // Links de hateoas
+
+        response.add(linkTo(
+            methodOn(PostController.class).getCommentsByPost(postId,
+                pageNumber, pageSize)).withSelfRel());
+
+        if(pageNumber < found_comments.getTotalPages() - 1)
+            response.add(linkTo(methodOn(PostController.class).getCommentsByPost(postId,
+                pageNumber + 1, pageSize)).withRel(IanaLinkRelations.NEXT));
+
+        if(pageNumber > 0)
+            response.add(linkTo(methodOn(PostController.class).getCommentsByPost(postId,
+                pageNumber - 1, pageSize)).withRel(IanaLinkRelations.PREVIOUS));
+
+        response.add(linkTo(methodOn(PostController.class).getCommentsByPost(postId,
+            0, pageSize)).withRel(IanaLinkRelations.FIRST));
+
+        response.add(linkTo(methodOn(PostController.class).getCommentsByPost(postId,
+            found_comments.getTotalPages() - 1,
+            pageSize)).withRel(IanaLinkRelations.LAST));
+
+        return ResponseEntity.ok(response);
     }
 
     /**

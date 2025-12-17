@@ -35,4 +35,4 @@ RUN mkdir -p /tavernnet/certs; \
 
 EXPOSE 8080
 # Arrancar un demonio para compilar más rápido y otro para ejecutar.
-ENTRYPOINT ["sh", "-c", "./gradlew build && ./gradlew --no-daemon bootRun"]
+#ENTRYPOINT ["sh"]

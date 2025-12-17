@@ -63,7 +63,6 @@ public class UserService implements UserDetailsService {
     public Page<User.PublicProfile> getUsers(String searchTerm, int pageNumber,
                                              int pageSize) {
         log.debug("GET /users search={} page={} count={}", searchTerm, pageNumber, pageSize);
-        //PageRequest page = PageRequest.of(pageNumber, pageSize);
         var root = userRepo.searchByUsernameWithCount(
             Pattern.quote(searchTerm),
             pageNumber * pageSize,
@@ -200,7 +199,6 @@ public class UserService implements UserDetailsService {
                 if (!(obj instanceof Document doc)) {
                     continue;
                 }
-                log.debug("usuario {}",obj);
                 pageContent.add(
                     new User.PublicProfile(
                         doc.getString("_id"),
