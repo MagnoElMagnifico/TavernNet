@@ -60,16 +60,16 @@ public class UserController {
         int pageSize
     ) {
         var users = userService.getUsers(
-            PageRequest.of(
-                pageNumber,
-                pageSize
-            )
+            searchTerm,
+            pageNumber,
+            pageSize
         );
 
         PagedModel<User.PublicProfile> response = PagedModel.of(
             users.getContent(), new PagedModel.PageMetadata(users.getSize(),
                 users.getNumber(), users.getTotalElements(),
-                users.getTotalPages()));
+                users.getTotalPages())
+        );
 
         // Links de hateoas
 
@@ -79,11 +79,11 @@ public class UserController {
 
         if(pageNumber < users.getTotalPages() - 1)
             response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
-            pageNumber + 1, pageSize)).withRel(IanaLinkRelations.NEXT));
+                pageNumber + 1, pageSize)).withRel(IanaLinkRelations.NEXT));
 
         if(pageNumber > 0)
             response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
-            pageNumber - 1, pageSize)).withRel(IanaLinkRelations.PREVIOUS));
+                pageNumber - 1, pageSize)).withRel(IanaLinkRelations.PREVIOUS));
 
         response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
             0, pageSize)).withRel(IanaLinkRelations.FIRST));

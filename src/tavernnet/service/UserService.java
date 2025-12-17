@@ -60,12 +60,16 @@ public class UserService implements UserDetailsService {
         this.assembler = assembler;
     }
 
-    public Page<User.PublicProfile> getUsers(PageRequest page) {
-        //log.debug("GET /users search={} page={} count={}", searchTerm, pageNumber, pageSize);
-        return userRepo.findAll(page).map(user -> new User.PublicProfile(
-            user.getOwnerId(),
-            user.getCreation(),
-            null));
+    public Page<User.PublicProfile> getUsers(String searchTerm, int pageNumber,
+                                             int pageSize) {
+        log.debug("GET /users search={} page={} count={}", searchTerm, pageNumber, pageSize);
+        //PageRequest page = PageRequest.of(pageNumber, pageSize);
+        var root = userRepo.searchByUsernameWithCount(
+            Pattern.quote(searchTerm),
+            pageNumber * pageSize,
+            pageSize
+        );
+        return toPage(root, pageNumber, pageSize);
     }
 
     public void createUser(
@@ -172,4 +176,48 @@ public class UserService implements UserDetailsService {
 
         return assembler.toModel(new PageImpl<>(pageContent, PageRequest.of(pageNumber, pageSize), totalCount));
     }*/
+
+    private Page<User.PublicProfile> toPage(
+        AggregationResults<Document> root,
+        int pageNumber,
+        int pageSize
+    ) {
+        var realRoot = root.getMappedResults().getFirst();
+
+        long totalCount = 0;
+        if (
+            realRoot.get("total_count") instanceof List<?> list
+                && !list.isEmpty()
+                && list.getFirst() instanceof Map<?, ?> map
+                && map.get("count") instanceof Number n
+        ) {
+            totalCount = n.longValue();
+        }
+
+        List<User.PublicProfile> pageContent = new ArrayList<>();
+        if (realRoot.get("page_data") instanceof List<?> pageData) {
+            for (Object obj : pageData) {
+                if (!(obj instanceof Document doc)) {
+                    continue;
+                }
+                log.debug("usuario {}",obj);
+                pageContent.add(
+                    new User.PublicProfile(
+                        doc.getString("_id"),
+                        doc.getDate("creation")
+                            .toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime(),
+                        null
+                    )
+                );
+            }
+        }
+
+        return new PageImpl<>(
+            pageContent,
+            PageRequest.of(pageNumber, pageSize),
+            totalCount
+        );
+    }
 }

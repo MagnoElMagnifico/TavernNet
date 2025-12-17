@@ -7,6 +7,7 @@ import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +23,9 @@ import tavernnet.model.PostView;
 import tavernnet.service.PostService;
 import tavernnet.utils.Utils;
 import tavernnet.utils.ValidObjectId;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("posts")
@@ -40,23 +44,56 @@ public class PostController {
      */
     @GetMapping
     @PreAuthorize("true")
-    public PagedModel<EntityModel<PostView>> getPosts(
+    public ResponseEntity<PagedModel<PostView>> getPosts(
         @RequestParam(value = "search", required = false, defaultValue = "")
-        String search,
+        String searchTerm,
 
         @RequestParam(value = "author", required = false, defaultValue = "")
         String author,
 
         @RequestParam(value = "page", required = false, defaultValue = "0")
         @Min(value = 0, message = "Minimum page is 0")
-        int page,
+        int pageNumber,
 
         @RequestParam(value = "count", required = false, defaultValue = "10")
         @Min(value = 1, message = "Minimum posts per page is 1")
         @Max(value = 100, message = "Maximum posts per page is 100")
-        int count
+        int pageSize
     ) {
-        return posts.searchPosts(search, author, page, count);
+        var found_posts = posts.searchPosts(searchTerm, author, pageNumber, pageSize);
+
+        PagedModel<PostView> response = PagedModel.of(
+            found_posts.getContent(),
+            new PagedModel.PageMetadata(found_posts.getSize(),
+                found_posts.getNumber(),
+                found_posts.getTotalElements(),
+                found_posts.getTotalPages())
+        );
+
+        // Links de hateoas
+
+        response.add(linkTo(
+            methodOn(PostController.class).getPosts(searchTerm, author,
+                pageNumber, pageSize)).withSelfRel());
+
+        if(pageNumber < found_posts.getTotalPages() - 1)
+            response.add(linkTo(methodOn(PostController.class).getPosts(searchTerm,
+                author,pageNumber + 1,
+                pageSize)).withRel(IanaLinkRelations.NEXT));
+
+        if(pageNumber > 0)
+            response.add(linkTo(methodOn(PostController.class).getPosts(searchTerm,
+                author,pageNumber - 1,
+                pageSize)).withRel(IanaLinkRelations.PREVIOUS));
+
+        response.add(linkTo(methodOn(PostController.class).getPosts(searchTerm,
+            author,0, pageSize)).withRel(IanaLinkRelations.FIRST));
+
+        response.add(linkTo(methodOn(PostController.class).getPosts(searchTerm,
+            author,found_posts.getTotalPages() - 1,
+            pageSize)).withRel(IanaLinkRelations.LAST));
+
+        return ResponseEntity.ok(response);
     }
 
     /**

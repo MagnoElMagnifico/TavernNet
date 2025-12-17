@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -69,7 +70,7 @@ public class PostService {
     /**
      * @return Lista de todos los posts.
      */
-    public PagedModel<EntityModel<PostView>> searchPosts(
+    public Page<PostView> searchPosts(
         String search,
         String author,
         int page,
@@ -95,7 +96,8 @@ public class PostService {
         }
 
         var root = postsViewRepo.searchPosts(match, page, count);
-        return toPagedModel(root, page, count);
+        return toPage(root, page, count);
+        //return toPagedModel(root, page, count);
     }
 
     /**
@@ -304,6 +306,44 @@ public class PostService {
             )
         );
     }
+
+    private Page<PostView> toPage(AggregationResults<Document> root, int pageNumber, int pageSize) {
+        var realRoot = root.getMappedResults().getFirst();
+
+        long totalCount = 0;
+        if (realRoot.get("total_count") instanceof List<?> list
+            && !list.isEmpty()
+            && list.getFirst() instanceof Map<?, ?> map
+            && map.get("count") instanceof Number n) {
+            totalCount = n.longValue();
+        }
+
+        // Para saber si el usuario actual le ha dado like, debemos saber qué usuario es
+        User.AuthUser authUser = Utils.getAuthUser();
+        ObjectId activeChar = authUser == null? null : authUser.activeCharacter();
+
+        List<PostView> pageContent = new ArrayList<>();
+        if (realRoot.get("page_data") instanceof List<?> pageData) {
+            for (Object obj : pageData) {
+                if (!(obj instanceof Document doc)) {
+                    continue;
+                }
+
+                PostView post = getPostFromDoc(doc);
+                completePost(post, activeChar);
+
+                pageContent.add(post);
+            }
+        }
+
+        return new PageImpl<>(
+            pageContent,
+            PageRequest.of(pageNumber, pageSize),
+            totalCount
+            );
+    }
+
+
 
     // Para minimizar el número de llamadas a la API desde el frontend, se
     // añaden algunos datos extra.
