@@ -62,8 +62,8 @@ public class PartyController {
         ObjectId partyId = partyService.createParty(request);
         return ResponseEntity
             .created(Utils.getUrl(
-                "getCharacter",
-                CharacterController.class,
+                "getParty",
+                PartyController.class,
                 partyId
             ))
             .build();

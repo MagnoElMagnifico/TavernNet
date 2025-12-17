@@ -51,6 +51,7 @@ public class PartyService {
     ) {
         log.info("GET /parties search={} page={} count={}", search, page, count);
         // TODO: completar operacion
+        //var root = partyRepo.searchByIdWithCount();
         return null;
     }
 

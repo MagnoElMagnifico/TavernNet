@@ -355,7 +355,7 @@ public class PostService {
         // Más info sobre el autor
         Character character = charRepo
             .findById(post.getAuthor())
-            .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character"));
+            .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character " + post.toString()));
         post.setAuthorDetails(
             character.getUser(),
             character.getName(),

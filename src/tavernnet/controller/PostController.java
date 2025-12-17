@@ -145,8 +145,12 @@ public class PostController {
         response.add(entityLinks.linkToCollectionResource(Post.class).withRel(
             IanaLinkRelations.COLLECTION));
 
-        response.add(entityLinks.linkToItemResource(Post.class,
-            response.getContent().getAuthor()).withRel(IanaLinkRelations.AUTHOR));
+        // El link al autor del post requiere el usuario y nombre de personaje
+        // para acceder al recurso
+        String characterName = response.getContent().getAuthorDetails().characterName();
+        String username = response.getContent().getAuthorDetails().username();
+        response.add(linkTo(methodOn(CharacterController.class).getCharacter(
+            username, characterName)).withRel(IanaLinkRelations.AUTHOR));
 
         response.add(linkTo(methodOn(PostController.class).getCommentsByPost(
             postId,0,10)).withRel("comments"));
