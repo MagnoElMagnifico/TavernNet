@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.boot.jackson.autoconfigure.JacksonProperties;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -69,8 +70,6 @@ public class User implements UserDetails, Ownable {
         }
     }
 
-    // TODO: version del public profile pero que use Character.Summary (para el listado de usuarios)
-
     /** DTO de lo que recibe el usuario tras iniciar sesion  */
     public record LoginResponse (
         @NotBlank(message = "Token must be not null or blank")
@@ -80,6 +79,11 @@ public class User implements UserDetails, Ownable {
         @NotBlank(message = "Type must be not null or blank")
         @JsonProperty("token_type")
         String type,
+
+        @Nullable
+        @JsonProperty("active_character")
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        String activeCharacterId,
 
         @NotBlank(message = "Expiration must be not null")
         Duration expiresIn
@@ -186,5 +190,16 @@ public class User implements UserDetails, Ownable {
     public String getOwnerId() {
         // El usuario es dueño de si mismo
         return username;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof User user)) return false;
+        return Objects.equals(username, user.username);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(username);
     }
 }

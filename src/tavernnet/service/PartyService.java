@@ -1,88 +1,160 @@
 package tavernnet.service;
 
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import org.bson.types.ObjectId;
+import org.jspecify.annotations.NullMarked;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
+import tavernnet.exception.InvalidCredentialsException;
+import tavernnet.exception.LimitException;
+import tavernnet.model.Message;
+import tavernnet.repository.CharacterRepository;
+import tavernnet.repository.UserRepository;
+import tavernnet.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
-import tavernnet.model.Character;
 import tavernnet.model.Party;
 import tavernnet.model.User;
+import tavernnet.model.Character;
 import tavernnet.repository.PartyRepository;
-import tavernnet.utils.patch.JsonPatch;
-import tavernnet.utils.patch.JsonPatchOperation;
-import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 
-import java.util.Collection;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Set;
 
 @Service
+@NullMarked
 public class PartyService {
+
     private static final Logger log = LoggerFactory.getLogger(PartyService.class);
-    private final PartyRepository parties;
-    private final ObjectMapper mapper;
 
-    public PartyService(PartyRepository parties, ObjectMapper mapper) {
-        this.parties = parties;
-        this.mapper = mapper;
+    private final PartyRepository partyRepo;
+    private final CharacterRepository charRepo;
+    private final UserRepository userRepo;
+
+    @Autowired
+    public PartyService(
+        PartyRepository partyRepo,
+        CharacterRepository charRepo,
+        UserRepository userRepo
+    ) {
+        this.partyRepo = partyRepo;
+        this.charRepo = charRepo;
+        this.userRepo = userRepo;
     }
 
-    /**
-     * @return Lista de todas las parties.
-     */
-    public Collection<@NotNull @Valid Party> getParties() {
-        return parties.findAll();
+    public PagedModel<EntityModel<Party.Summary>> searchParties(
+        String search,
+        int page,
+        int count
+    ) {
+        log.info("GET /parties search={} page={} count={}", search, page, count);
+        // TODO: completar operacion
+        return null;
     }
 
-    /**
-     * @return Party especificada por id (nombre).
-     */
-    public @NotNull @Valid Party getParty(String partyId) throws ResourceNotFoundException {
-        return parties.findById(partyId).orElseThrow(() -> new ResourceNotFoundException("Party", partyId));
-    }
+    public ObjectId createParty(Party.CreationRequest newParty) throws InvalidCredentialsException, ResourceNotFoundException {
+        User.AuthUser user = Utils.safeGetAuthUser();
 
-    /**
-     * @param characters Personajes de la party a crear.
-     * @param DM Dungeon Master de la party.
-     * @param name Nombre e identificador de la party
-     * @return party creada.
-     */
-    public Party createParty(Collection<Character> characters, User DM, String name) throws DuplicatedResourceException {
-        // El nombre de la party debe ser nuevo
-        if (parties.existsById(name)) {
-            throw new DuplicatedResourceException(characters, "Party", name);
+        // Validar que los miembros iniciales existen
+        if (newParty.inicialMembers() != null) {
+            for (String memberId : newParty.inicialMembers()) {
+                if (!ObjectId.isValid(memberId) || !charRepo.existsById(new ObjectId(memberId))) {
+                    throw new ResourceNotFoundException("Character", memberId);
+                }
+            }
         }
-        Party party = new Party(name, characters, DM);
-        party = parties.save(party);
-        log.info("Created party with id '{}'", party.getClass());
+
+        // Almacenar en la BD
+        Party party = partyRepo.save(Party.fromRequest(newParty, user.username()));
+        log.info("POST /parties new party=\"{}\"", party.getId());
+        return party.getId();
+    }
+
+    public Party getParty(ObjectId partyId) throws ResourceNotFoundException {
+        Party party = partyRepo
+            .findById(partyId)
+            .orElseThrow(() -> new ResourceNotFoundException("Party", partyId.toHexString()));
+
+        // Configurar detalles de los personajes miembros
+        party.setMemberDetails(
+            party
+                .getMembersIds()
+                .stream()
+                .map(id -> {
+                    Character character = charRepo.getCharacterById(id);
+                    return Character.Summary.fromCharacter(character);
+                })
+                .toList()
+        );
+
         return party;
     }
 
-    /**
-     *
-     * @param partyId
-     * @param changes Lista de cambios de la petición PATCH
-     * @return party modificada
-     */
-    public Party updateParty(@NotBlank String partyId, List<JsonPatchOperation> changes)
-        throws ResourceNotFoundException, JsonPatchFailedException {
-        Party party = parties.findById(partyId).orElseThrow(
-            () -> new ResourceNotFoundException("Party", partyId));
-        JsonNode updated_node = JsonPatch.apply(
-            changes, mapper.convertValue(party, JsonNode.class));
-        Party updated = mapper.convertValue(updated_node, Party.class);
-        return parties.save(updated);
+    public void deleteParty(ObjectId partyId) throws ResourceNotFoundException {
+        if (!partyRepo.existsById(partyId)) {
+            throw new ResourceNotFoundException("Party", partyId.toHexString());
+        }
+        partyRepo.deleteById(partyId);
     }
 
-    public void deleteParty(@NotBlank String partyId)
-        throws ResourceNotFoundException {
-        Party deletedParty = parties.findById(partyId).orElseThrow(() -> new ResourceNotFoundException("Party", partyId));
-        parties.deleteById(partyId);
+    // ==== EDITAR PARTY =======================================================
+
+    public void changeDm(ObjectId partyId, Party.DmChangeRequest dm) throws ResourceNotFoundException {
+        if (!partyRepo.existsById(partyId)) {
+            throw new ResourceNotFoundException("Party", partyId.toHexString());
+        }
+
+        if (!userRepo.existsById(dm.username())) {
+            throw new ResourceNotFoundException("User", dm.username());
+        }
+
+        partyRepo.updateDm(partyId, dm.username());
     }
 
+    public void addMembers(ObjectId partyId, Set<ObjectId> newMembers) throws ResourceNotFoundException, LimitException {
+        Party party = partyRepo
+            .findById(partyId)
+            .orElseThrow(() -> new ResourceNotFoundException("Party", partyId.toHexString()));
+
+        // Limitar parties a 20 miembros
+        if (party.getMembersIds().size() + newMembers.size() > 20) {
+            throw new LimitException("Party member limit is 20");
+        }
+
+        for (ObjectId memberId : newMembers) {
+            if (!charRepo.existsById(memberId)) {
+                throw new ResourceNotFoundException("Character", memberId.toHexString());
+            }
+        }
+
+        partyRepo.addMembers(partyId, newMembers);
+    }
+
+    public void deleteMember(ObjectId partyId, ObjectId member) throws ResourceNotFoundException {
+        if (!partyRepo.existsById(partyId)) {
+            throw new ResourceNotFoundException("Party", partyId.toHexString());
+        }
+
+        if (partyRepo.removeMember(partyId, member) != 1) {
+            throw new ResourceNotFoundException("Character", member.toHexString());
+        }
+    }
+
+    // ==== MENSAJES ===========================================================
+
+    public PagedModel<EntityModel<Message>> getMessages(
+        ObjectId partyId,
+        LocalDateTime after,
+        int page,
+        int count
+    ) {
+        // TODO: implementar
+        return null;
+    }
+
+    public void sendMessage(ObjectId partyId, Message.CreationRequest msg) {
+        // TODO: implementar
+    }
 }

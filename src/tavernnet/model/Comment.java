@@ -2,6 +2,7 @@ package tavernnet.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -132,6 +133,7 @@ public class Comment implements Ownable {
         this.authorDetails = Character.Summary.deleted();
     }
 
+    @JsonInclude
     @Override
     public String getOwnerId() {
         return author.toHexString();

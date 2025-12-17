@@ -2,18 +2,13 @@ package tavernnet.service;
 
 import org.bson.Document;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Example;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import org.springframework.hateoas.PagedModel;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -41,7 +36,6 @@ public class UserService implements UserDetailsService {
     private final CharacterRepository charRepo;
     private final UserRefreshTokenRepository userRefreshRepo;
     private final RefreshTokenRepository refreshRepo;
-    private final PagedResourcesAssembler<User.PublicProfile> assembler;
 
     @Autowired
     public UserService(
@@ -49,15 +43,13 @@ public class UserService implements UserDetailsService {
         UserRepository userRepo,
         CharacterRepository charRepo,
         UserRefreshTokenRepository userRefreshRepo,
-        RefreshTokenRepository refreshRepo,
-        PagedResourcesAssembler<User.PublicProfile> assembler
+        RefreshTokenRepository refreshRepo
     ) {
         this.passwordEncoder = passwordEncoder;
         this.userRepo = userRepo;
         this.charRepo = charRepo;
         this.userRefreshRepo = userRefreshRepo;
         this.refreshRepo = refreshRepo;
-        this.assembler = assembler;
     }
 
     public Page<User.PublicProfile> getUsers(String searchTerm, int pageNumber,

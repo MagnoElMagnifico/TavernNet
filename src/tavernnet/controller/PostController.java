@@ -141,6 +141,8 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
+    // ==== LIKES ==============================================================
+
     @PostMapping("{postid}/like")
     @PreAuthorize("isAuthenticated() and principal.activeCharacter != null")
     public ResponseEntity<Void> giveLike(
@@ -152,7 +154,6 @@ public class PostController {
         return ResponseEntity.created(Utils.getUrl("getPost", PostController.class, postId)).build();
     }
 
-    // TODO: error de si el usuario no habia dado like antes
     @DeleteMapping("{postid}/like")
     @PreAuthorize("isAuthenticated() and principal.activeCharacter != null")
     public ResponseEntity<Void> removeLike(
@@ -164,13 +165,14 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
+    // ==== COMENTARIOS ========================================================
+
     /**
      * <code>GET /posts/{postid}/comments</code>
      * @param postId ID del post del que obtener los comentarios.
      * @return <code>200 OK</code> en éxito, <code>404 Not found</code> si
      * no existe el ID proporcionado.
      */
-    // TODO: paginacion si hay muchos comentarios
     @GetMapping("{postid}/comments")
     @PreAuthorize("true")
     public PagedModel<EntityModel<Comment>> getCommentsByPost(
@@ -206,7 +208,7 @@ public class PostController {
         @RequestBody @Valid
         Comment.CommentRequest newComment
     ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
-        ObjectId commentId = posts.createComment(postId, newComment);
+        posts.createComment(postId, newComment);
         return ResponseEntity.created(Utils.getUrl("getCommentsByPost", PostController.class, postId, 0, 1)).build();
     }
 }

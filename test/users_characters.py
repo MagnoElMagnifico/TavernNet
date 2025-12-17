@@ -55,6 +55,18 @@ def test_noauth_user(user: User):
         'Empty search returns no users'
     )
 
+    # Comprobar que el filtro de busqueda es correcto
+    r = requests.get(f'{SITE}/users?search={USER_EXISTS.username}&page=0&count=50')
+    check(r, HTTPStatus.OK)
+    json = r.json()
+    check_value(
+        r,
+        json.get('_embedded') is not None and
+        json['_embedded'].get('publicProfileList') is not None and
+        len(json['_embedded']['publicProfileList']) == 1,
+        'Search term for specific unique user returns one user'
+    )
+
     # CREAR USUARIO
     # NOTA: el usuario ya se creó en test_setup()
     # Repetido

@@ -19,6 +19,7 @@ import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 @Document(collection = "characters")
 @NullMarked
@@ -99,7 +100,7 @@ public class Character implements Ownable {
         @NotBlank @Size(max = 1000, message = "Action description too long") String description,
         @Min(value = 0) @Max(value = 1000) int range,
         @Min(value = -20) @Max(value = 20) int toHit,
-        @Valid DiceSpec damageDice,
+        @Valid Dice damageDice,
         @NotBlank String damageType,
         @Valid Type type
     ) {
@@ -109,7 +110,7 @@ public class Character implements Ownable {
 
         public static Collection<Action> defaultActions() {
             return List.of(
-                new Action("Unarmed strike", "Regular attack with no weapons", 5, 0, DiceSpec.of(1, 6), "bludgeoning", Type.MELEE)
+                new Action("Unarmed strike", "Regular attack with no weapons", 5, 0, Dice.of(1, 6), "bludgeoning", Type.MELEE)
             );
         }
     }
@@ -367,5 +368,16 @@ public class Character implements Ownable {
                 "Changing ID, user or creation date is forbidden"
             );
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Character character)) return false;
+        return Objects.equals(id, character.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }

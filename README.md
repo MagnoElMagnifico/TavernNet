@@ -3,10 +3,6 @@ En ella, los perfiles de los usuarios se representan como fichas de personaje,
 con atributos, clases y estadísticas. La aplicación tendrá un sistema de _posts_
 (publicaciones) y de _parties_ (grupos de chat).
 
-> [!NOTE]
-> No pretendemos implementar todas estas funcionalidades, solo aquellas partes
-> que se correspondan mejor con lo se vea en la materia.
-
 # Ejecutar
 
 Para una versión de producción:
@@ -65,31 +61,31 @@ hx .
 ./gradlew build
 ```
 
-# Características
+# Introducción
 
-- [ ] Perfiles de usuario con fichas de personaje
-- [ ] Una misma cuenta puede tener varios personajes
+<!-- TODO: explicar lo que es D&D, poner una captura de una ficha de personaje -->
 
-Publicaciones:
+# Diseño del modelo de datos
 
-- [ ] Texto e imágenes
-- [ ] Comentarios y likes
-- [ ] Generar _feed_ para el usuario
+<!-- TODO: actualizar el diagrama -->
 
-_Parties_:
+![](TavernNet.png)
 
-- [ ] Grupos de mensajes entre personajes
-- [ ] Administración por un usuario DM
-- [ ] Mecánica para tirar dados con las _stats_ del personaje
+<!-- TODO: explicar criterios de borrado -->
+
+# Arquitectura
+
+<!-- TODO: diagrama de la arquitectura -->
+<!-- TODO: mostrar los 2 dockerfiles -->
 
 # Diseño de la API
 
-Usuarios y personajes (`UserService`, `CharacterService`):
+## Usuarios y personajes (`UserService`, `CharacterService`)
 
-| Verbo    | URL                                           | Descripción                                    | Autenticacion |
+| Verbo    | URL                                           | Descripción                                    | Autenticación |
 |----------|-----------------------------------------------|------------------------------------------------|---------------|
-| `GET`    | `/users?search=xxx&page=0&count=10`           | Buscar por nombre de usuario                   | No            |
-| `POST`   | `/users`                                      | Crear nuevo usuario                            | *No*          |
+| `GET`    | `/users search=X author=X page=0 count=1`     | Buscar por nombre de usuario (paginado)        | No            |
+| `POST`   | `/users`                                      | Crear nuevo usuario                            | **NO**        |
 | `GET`    | `/users/{userid}`                             | Consultar perfil de usuario                    | No            |
 | `DELETE` | `/users/{userid}`                             | Borrar usuario                                 | Si            |
 | `GET`    | `/users/{userid}/characters`                  | Obtener personajes del usuario                 | No            |
@@ -98,15 +94,24 @@ Usuarios y personajes (`UserService`, `CharacterService`):
 | `PATCH`  | `/users/{userid}/characters/{character-name}` | Editar stats de personaje                      | Si            |
 | `DELETE` | `/users/{userid}/characters/{character-name}` | Borrar el personaje                            | Si            |
 
-Operaciones de autenticación y seguridad (`AuthService`):
+<!-- TODO: imágenes de foto de perfil: usuario y personajes -->
 
-| Verbo    | URL                                           | Descripción                                    | Autenticacion |
-|----------|-----------------------------------------------|------------------------------------------------|---------------|
-| `POST`   | `/auth/login`                                 | Iniciar sesión como usuario                    | *No*          |
-| `POST`   | `/auth/character-login`                       | Iniciar sesión como un personaje               | Si            |
-| `POST`   | `/auth/refresh`                               | Genera un nuevo token sin contraseña           | Si            |
-| `POST`   | `/auth/logout`                                | Cierra sesión (ADMIN puede sobre otro usuario) | Si            |
-| `POST`   | `/users/{userid}/password`                    | Cambiar contraseña del usuario                 | Si            |
+<!-- TODO: poner ejemplo del JSON -->
+<!-- TODO: poner ejemplo del JSON -->
+
+## Operaciones de autenticación y seguridad (`AuthService`)
+
+| Verbo    | URL                        | Descripción                                    | Autenticación |
+|----------|----------------------------|------------------------------------------------|---------------|
+| `POST`   | `/auth/login`              | Iniciar sesión como usuario                    | **NO**        |
+| `POST`   | `/auth/character-login`    | Iniciar sesión como un personaje               | Si            |
+| `POST`   | `/auth/refresh`            | Genera un nuevo token sin contraseña           | Si            |
+| `POST`   | `/auth/logout`             | Cierra sesión (ADMIN puede sobre otro usuario) | Si            |
+| `POST`   | `/users/{userid}/password` | Cambiar contraseña del usuario                 | Si            |
+
+<!-- TODO: convertir USER a ADMIN -->
+
+<!-- TODO: poner ejemplo de las respuestas -->
 
 2 roles:
 
@@ -162,7 +167,7 @@ ser los que se han seleccionado:
 
 Pero, hemos decidido no hacerlo por los siguientes motivos:
 
--   Las sesiones JWT con son recursos como tal.
+-   Las sesiones JWT no son recursos como tal.
 -   Puede ser confuso, ya que es menos intuitivo y el resto de APIs no lo hacen
     de esta forma.
 -   No aporta ningún beneficio adicional, de hecho, solo complica la
@@ -178,53 +183,62 @@ Otras decisiones de diseño:
     implementa en `AuthService` porque se trata de una operación de seguridad y
     necesita acceso al repositorio de los _RefreshTokens_.
 
-Creación de posts (`PostService`):
+## Creación de posts (`PostService`)
 
-| Verbo    | URL                                        | Descripción                  | Autenticacion |
+| Verbo    | URL                                        | Descripción                  | Autenticación |
 |----------|--------------------------------------------|------------------------------|---------------|
-| `GET`    | `/posts?search=X&author=X&page=0&count=10` | Buscar posts                 | No            |
+| `GET`    | `/posts search=X author=X page=0 count=10` | Buscar posts (paginado)      | No            |
 | `POST`   | `/posts`                                   | Crear un post                | Si            |
 | `GET`    | `/posts/{postid}`                          | Consultar un post            | No            |
 | `DELETE` | `/posts/{postid}`                          | Borrar un post               | Si            |
 | `POST`   | `/posts/{postid}/like`                     | Dar un like a un post        | Si            |
 | `DELETE` | `/posts/{postid}/like`                     | Quitar un like a un post     | Si            |
-| `GET`    | `/posts/{postid}/comments?page=0&count=10` | Obtener lista de comentarios | No            |
+| `GET`    | `/posts/{postid}/comments page=0 count=10` | Obtener lista de comentarios | No            |
 | `POST`   | `/posts/{postid}/comments`                 | Enviar comentario a un post  | Si            |
 
-_Parties_ y mensajes (`PartyService`):
+<!-- TODO: editar post, borrar comentario, editar comentario -->
 
-| Verbo    | URL                                         | Descripción                            | Autenticacion     |
-|----------|---------------------------------------------|----------------------------------------|-------------------|
-| `GET`    | `/parties?search=xxx&page=0&count=10`       | Buscar _parties_ existentes            | No                |
-| `POST`   | `/parties`                                  | Crear una nueva _party_                | Si                |
-| `GET`    | `/parties/{party-id}`                       | Obtener miembros de la _party_ y DM    | No                |
-| `POST`   | `/parties/{party-id}`                       | Añadir/quitar miembros de la _party_   | Si (DM)           |
-| `PATCH`  | `/parties/{party-id}`                       | Administrar _party_                    | Si (DM)           |
-| `DELETE` | `/parties/{party-id}`                       | Borrar _party_                         | Si (DM)           |
-| `DELETE` | `/parties/{party-id}?member={character-id}` | Borrar miembro de la _party_           | Si (DM)           |
-| `GET`    | `/parties/{party-id}/messages`              | Obtener ultimos mensajes de la _party_ | *Si* (Miembro/DM) |
-| `POST`   | `/parties/{party-id}/messages`              | Enviar mensajes                        | Si (Miembro/DM)   |
+<!-- TODO: ejemplos -->
+<!-- TODO: imágenes en los posts/comentarios -->
 
-NOTA: La notificación de nuevos mensajes requiere _pulling_. Una mejor
-estrategia sería usar _WebSockets_, pero eso está fuera del alcance.
+## _Parties_ y mensajes (`PartyService`)
 
-# Diseño del modelo de datos
+| Verbo    | URL                                                      | Descripción                            | Autenticación       |
+|----------|----------------------------------------------------------|----------------------------------------|---------------------|
+| `GET`    | `/parties search=XXX page=0 count=10`                    | Buscar _parties_ existentes (paginado) | No                  |
+| `POST`   | `/parties`                                               | Crear una nueva _party_                | Si                  |
+| `GET`    | `/parties/{party-id}`                                    | Obtener miembros de la _party_ y DM    | No                  |
+| `DELETE` | `/parties/{party-id}`                                    | Borrar _party_                         | Si (DM)             |
+| `PUT`    | `/parties/{party-id}/dm`                                 | Cambiar DM de la _party_               | Si (DM)             |
+| `POST`   | `/parties/{party-id}/members`                            | Añadir miembros a la _party_           | Si (DM)             |
+| `DELETE` | `/parties/{party-id}/members/{character-id}`             | Borrar miembro de la _party_           | Si (DM)             |
+| `GET`    | `/parties/{party-id}/messages after=date page=0 count=1` | Obtener ultimos mensajes de la _party_ | **Si** (Miembro/DM) |
+| `POST`   | `/parties/{party-id}/messages`                           | Enviar mensajes / tirar dados          | Si (Miembro/DM)     |
 
-Se puede consultar el modelo actualizado en el archivo [model.mdj](./model.mdj)
-usando StarUML. La siguiente captura de pantalla puede que esté desactualizada.
+<!-- TODO: editar nombre y descripción -->
 
-![](TavernNet.png)
+<!-- TODO: ejemplos -->
+<!-- TODO: imágenes en los mensajes -->
+
+> [!NOTE]
+> La notificación de nuevos mensajes requiere _pulling_. Una mejor estrategia
+> sería usar _WebSockets_, pero eso está fuera del alcance.
 
 # Características de implementación
 
 -   `DatabaseInicializer` crea unas entradas en la BD si no existen, incluyendo
     los índices necesarios. Esto hace que se marquen con el nombre de la clase
     apropiada, en lugar de crearlos manualmente.
+
 -   Se ha hecho una anotación que permite validar `ObjectId`s.
+
 -   Interfaz `Ownable` para determinar quién es el dueño de un recurso.
+
 -   `ErrorController` que maneja gran parte de los errores por peticiones
     inválidas.
+
 -   Todos los servicios dejan registrado lo que van haciendo en _logs_.
+
 -   Scripts que prueban la API completa.
 
 
