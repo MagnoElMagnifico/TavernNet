@@ -1,10 +1,25 @@
 package tavernnet.repository;
 
+import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.mongodb.repository.Update;
+import org.springframework.stereotype.Repository;
 import tavernnet.model.Party;
 
-public interface PartyRepository extends MongoRepository<Party, String> {
+import java.util.Set;
 
-    @Override
-    boolean existsById(String s);
+@Repository
+public interface PartyRepository extends MongoRepository<Party, ObjectId> {
+    @Query("{ '_id': ?0 }")
+    @Update("{ '$set': { 'dm': ?1 } }")
+    void updateDm(ObjectId partyId, String dm);
+
+    @Query("{ '_id': ?0 }")
+    @Update("{ '$addToSet': { 'members': { $each: ?1 } } }")
+    void addMembers(ObjectId partyId, Set<ObjectId> members);
+
+    @Query("{ '_id': ?0 }")
+    @Update("{ '$pull': { 'members': ?1 } }")
+    long removeMember(ObjectId partyId, ObjectId member);
 }

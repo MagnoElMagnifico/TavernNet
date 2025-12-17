@@ -171,6 +171,8 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
+    // ==== LIKES ==============================================================
+
     @PostMapping("{postid}/like")
     @PreAuthorize("isAuthenticated() and principal.activeCharacter != null")
     public ResponseEntity<Void> giveLike(
@@ -182,7 +184,6 @@ public class PostController {
         return ResponseEntity.created(Utils.getUrl("getPost", PostController.class, postId)).build();
     }
 
-    // TODO: error de si el usuario no habia dado like antes
     @DeleteMapping("{postid}/like")
     @PreAuthorize("isAuthenticated() and principal.activeCharacter != null")
     public ResponseEntity<Void> removeLike(
@@ -193,6 +194,8 @@ public class PostController {
         posts.removeLike(postId);
         return ResponseEntity.noContent().build();
     }
+
+    // ==== COMENTARIOS ========================================================
 
     /**
      * <code>GET /posts/{postid}/comments</code>
@@ -269,7 +272,7 @@ public class PostController {
         @RequestBody @Valid
         Comment.CommentRequest newComment
     ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
-        ObjectId commentId = posts.createComment(postId, newComment);
+        posts.createComment(postId, newComment);
         return ResponseEntity.created(Utils.getUrl("getCommentsByPost", PostController.class, postId, 0, 1)).build();
     }
 }

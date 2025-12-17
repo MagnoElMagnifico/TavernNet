@@ -160,6 +160,8 @@ public class PostService {
         log.debug("DELETE /posts/{} delete comments and likes of post", postId);
     }
 
+    // TODO: editar post con PUT
+
     // ==== COMENTARIOS ========================================================
 
     /**
@@ -218,6 +220,9 @@ public class PostService {
         log.debug("POST /posts/{}/comments new comment by character='{}'", postId, user.activeCharacter().toHexString());
         return comment.getId();
     }
+
+    // TODO: editar comentario con PUT, borrar comentario con DELETE
+    // TODO: por extension, GET de un solo comentario?
 
     // ==== LIKES ==============================================================
 

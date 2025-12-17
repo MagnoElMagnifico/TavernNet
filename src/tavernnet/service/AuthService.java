@@ -24,10 +24,7 @@ import tavernnet.exception.InvalidCredentialsException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.*;
 import tavernnet.model.Character;
-import tavernnet.repository.CharacterRepository;
-import tavernnet.repository.RefreshTokenRepository;
-import tavernnet.repository.UserRefreshTokenRepository;
-import tavernnet.repository.UserRepository;
+import tavernnet.repository.*;
 import tavernnet.utils.Utils;
 
 import java.security.KeyPair;
@@ -52,8 +49,9 @@ public class AuthService {
     private final UserRepository userRepo;
     private final RefreshTokenRepository refreshRepo;
     private final UserRefreshTokenRepository userRefreshRepo;
-    private final MongoTemplate mongo;
     private final CharacterRepository charRepo;
+    private final PartyRepository partyRepo;
+    private final MongoTemplate mongo;
 
     // NOTA: estos no pueden ser null por el valor por defecto dado
     /** Duracion del jwt (default: 15min) */
@@ -73,7 +71,8 @@ public class AuthService {
         UserRefreshTokenRepository userRefreshRepo,
         UserRepository userRepo,
         MongoTemplate mongo,
-        CharacterRepository charRepo
+        CharacterRepository charRepo,
+        PartyRepository partyRepo
     ) {
         this.authMng = authMng;
         this.keyPair = keyPair;
@@ -84,6 +83,7 @@ public class AuthService {
         this.userRepo = userRepo;
         this.mongo = mongo;
         this.charRepo = charRepo;
+        this.partyRepo = partyRepo;
     }
 
     // ==== TIPOS DE DATOS NECESARIOS ==========================================
@@ -161,7 +161,7 @@ public class AuthService {
         log.debug("POST /auth/login created tokens JWT={} Refresh={}", jwt, refreshToken.uuid());
 
         return new LoginResponse(
-            new User.LoginResponse(jwt, AUTH_TYPE, jwtTtl),
+            new User.LoginResponse(jwt, AUTH_TYPE, activeChar, jwtTtl),
             refreshToken
         );
     }
@@ -183,7 +183,7 @@ public class AuthService {
         log.debug("POST /auth/login-character created tokens JWT={} Refresh={}", jwt, refreshToken.uuid());
 
         return new LoginResponse(
-            new User.LoginResponse(jwt, AUTH_TYPE, jwtTtl),
+            new User.LoginResponse(jwt, AUTH_TYPE, characterId.toHexString(), jwtTtl),
             refreshToken
         );
     }
@@ -207,7 +207,7 @@ public class AuthService {
         log.debug("POST /auth/refresh new tokens JWT={} Refresh={}", newJwt, newRefreshToken.uuid());
 
         return new LoginResponse(
-            new User.LoginResponse(newJwt, AUTH_TYPE, jwtTtl),
+            new User.LoginResponse(newJwt, AUTH_TYPE, token.activeCharacter(), jwtTtl),
             newRefreshToken
         );
     }
@@ -346,6 +346,25 @@ public class AuthService {
         );
 
         return c.getOwnerId().equals(user.username());
+    }
+
+    public boolean isMember(ObjectId partyId, User.AuthUser user) throws ResourceNotFoundException {
+        if (user.activeCharacter() == null) {
+            return false;
+        }
+
+        Party party = partyRepo
+            .findById(partyId)
+            .orElseThrow(() -> new ResourceNotFoundException("Party", partyId.toHexString()));
+
+        // Búsqueda lineal en los miembros
+        for (ObjectId id : party.getMembersIds()) {
+            if (id.equals(user.activeCharacter())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // ==== GENERACIÓN DE TOKENS ===============================================

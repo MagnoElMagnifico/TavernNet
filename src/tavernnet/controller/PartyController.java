@@ -1,29 +1,34 @@
 package tavernnet.controller;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
+import org.bson.types.ObjectId;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
-import tavernnet.exception.DuplicatedResourceException;
+import tavernnet.exception.InvalidCredentialsException;
+import tavernnet.exception.LimitException;
 import tavernnet.exception.ResourceNotFoundException;
+import tavernnet.model.Message;
 import tavernnet.model.Party;
-import tavernnet.service.CharacterService;
 import tavernnet.service.PartyService;
-import tavernnet.service.UserService;
-import tavernnet.utils.patch.JsonPatchOperation;
-import tavernnet.utils.patch.exceptions.JsonPatchFailedException;
+import tavernnet.utils.Utils;
+import tavernnet.utils.ValidObjectId;
 
-import java.util.Collection;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Set;
 
 @RestController
 @RequestMapping("parties")
+@NullMarked
 public class PartyController {
-    private static final Logger log = LoggerFactory.getLogger(PartyController.class);
+
     private final PartyService partyService;
 
     @Autowired
@@ -31,49 +36,138 @@ public class PartyController {
         this.partyService = partyService;
     }
 
-    /**
-     * @return lista de parties existentes
-     */
     @GetMapping
-    public Collection<Party> getParties(){
-        return partyService.getParties();
+    @PreAuthorize("true")
+    public PagedModel<EntityModel<Party.Summary>> searchParties(
+        @RequestParam(value = "search", required = false, defaultValue = "")
+        String search,
+
+        @RequestParam(value = "page", required = false, defaultValue = "0")
+        @Min(value = 0, message = "Minimum page is 0")
+        int page,
+
+        @RequestParam(value = "count", required = false, defaultValue = "10")
+        @Min(value = 1, message = "Minimum parties per page is 1")
+        @Max(value = 100, message = "Maximum parties per page is 100")
+        int count
+    ) {
+        return partyService.searchParties(search, page, count);
     }
 
     @PostMapping
-    public ResponseEntity<Void> createParty(@RequestBody Party party)
-        throws DuplicatedResourceException {
-        var url = MvcUriComponentsBuilder.fromMethodName(
-                CharacterController.class,
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> createParty(
+        @RequestBody Party.@Valid CreationRequest request
+    ) throws InvalidCredentialsException, ResourceNotFoundException {
+        ObjectId partyId = partyService.createParty(request);
+        return ResponseEntity
+            .created(Utils.getUrl(
                 "getCharacter",
-                party.getName())
-            .build()
-            .toUri();
-
-        return ResponseEntity.created(url).build();
+                CharacterController.class,
+                partyId
+            ))
+            .build();
     }
 
     @GetMapping("{party}")
-    public Party getParty(@PathVariable("party") String party)
-        throws ResourceNotFoundException {
-        return partyService.getParty(party);
-    }
-
-    @PatchMapping("{party}")
-    public ResponseEntity<@Valid Party> updateParty(
-        @PathVariable("party") String partyId,
-        @RequestBody List<JsonPatchOperation> changes)
-        throws ResourceNotFoundException, JsonPatchFailedException {
-        return ResponseEntity.ok(partyService.updateParty(partyId, changes));
+    @PreAuthorize("true")
+    public Party getParty(
+        @PathVariable("party") @ValidObjectId ObjectId partyId
+    ) throws ResourceNotFoundException {
+        return partyService.getParty(partyId);
     }
 
     @DeleteMapping("{party}")
+    @PreAuthorize("hasRole('ADMIN') or @auth.isUserOwner('parties', #partyId, #principal)")
     public ResponseEntity<Void> deleteParty(
         @PathVariable("party")
-        @NotBlank(message = "Missing partyId to retrieve")
-        String partyId
+        @ValidObjectId
+        ObjectId partyId
     ) throws ResourceNotFoundException {
         partyService.deleteParty(partyId);
         return ResponseEntity.noContent().build();
     }
 
+    // ==== EDITAR PARTY =======================================================
+
+    @PutMapping("{party}/dm")
+    @PreAuthorize("hasRole('ADMIN') or @auth.isUserOwner('parties', #partyId, #principal)")
+    public ResponseEntity<Void> changeDm(
+        @PathVariable("party")
+        @ValidObjectId
+        ObjectId partyId,
+        @RequestBody
+        Party.@Valid DmChangeRequest dm
+    ) throws ResourceNotFoundException {
+        partyService.changeDm(partyId, dm);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("{party}/members")
+    @PreAuthorize("hasRole('ADMIN') or @auth.isUserOwner('parties', #partyId, #principal)")
+    public ResponseEntity<Void> addMembers(
+        @PathVariable("party")
+        @ValidObjectId
+        ObjectId partyId,
+        @RequestBody
+        @Size(min=1, max=20)
+        Set<@ValidObjectId ObjectId> newMembers
+    ) throws ResourceNotFoundException, LimitException {
+        partyService.addMembers(partyId, newMembers);
+        // TODO: que hacemos con la URL?
+        return ResponseEntity.created(null).build();
+    }
+
+    @DeleteMapping("{party}/members/{memberid}")
+    @PreAuthorize("hasRole('ADMIN') or @auth.isUserOwner('parties', #partyId, #principal)")
+    public ResponseEntity<Void> deleteMember(
+        @PathVariable("party")
+        @ValidObjectId
+        ObjectId partyId,
+        @PathVariable("memberid")
+        @ValidObjectId
+        ObjectId memberId
+    ) throws ResourceNotFoundException {
+        partyService.deleteMember(partyId, memberId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ==== MENSAJES ===========================================================
+
+    @GetMapping("{party}/messages")
+    @PreAuthorize("hasRole('ADMIN') or @auth.isUserOwner('parties', #partyId, #principal) or @auth.isMember(#partyId, #principal)")
+    public PagedModel<EntityModel<Message>> getMessages(
+        @PathVariable("party")
+        @ValidObjectId
+        ObjectId partyId,
+
+        @RequestParam(value = "after", required = false, defaultValue = "10") // TODO: now
+        @Valid
+        String after,
+
+        @RequestParam(value = "page", required = false, defaultValue = "0")
+        @Min(value = 0, message = "Minimum page is 0")
+        int page,
+
+        @RequestParam(value = "count", required = false, defaultValue = "10")
+        @Min(value = 1, message = "Minimum parties per page is 1")
+        @Max(value = 100, message = "Maximum parties per page is 100")
+        int count
+    ) throws ResourceNotFoundException {
+        return partyService.getMessages(partyId, LocalDateTime.parse(after), page, count);
+    }
+
+    @PostMapping("{party}/messages")
+    @PreAuthorize("hasRole('ADMIN') or @auth.isUserOwner('parties', #partyId, #principal) or @auth.isMember(#partyId, #principal)")
+    public ResponseEntity<Void> sendMessages(
+        @PathVariable("party")
+        @ValidObjectId
+        ObjectId partyId,
+        @RequestBody
+        Message.@Valid CreationRequest message
+    ) {
+        partyService.sendMessage(partyId, message);
+        // TODO: que URL le ponemos?
+        return ResponseEntity.created(null).build();
+    }
 }
