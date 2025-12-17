@@ -7,14 +7,15 @@ services:
 
   server:
     image: tavernnet-dev:latest
-    stdin_open: true # docker run -i
-    tty: true        # docker run -t
+    stdin_open: true
+    tty: true
+    entrypoint: /bin/sh
     build:
-        context: .
-        dockerfile: Dockerfile.dev
-        args:
-            KEYSTORE_PASSWORD: abcd1234
-            KEYSTORE_PRIVATE_PASSWORD: abcd1234
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+          KEYSTORE_PASSWORD: abcd1234
+          KEYSTORE_PRIVATE_PASSWORD: abcd1234
     ports:
       - "8080:8080"
     volumes:

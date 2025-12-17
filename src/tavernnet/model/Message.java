@@ -75,7 +75,7 @@ public class Message implements Ownable {
         this.dice = dice;
     }
 
-    public Message fromRequest(CreationRequest r, ObjectId author, ObjectId party) {
+    public static Message fromRequest(CreationRequest r, ObjectId author, ObjectId party) {
         return new Message(
             null,
             author,

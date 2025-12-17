@@ -84,7 +84,7 @@ hx .
 
 | Verbo    | URL                                           | Descripción                                    | Autenticación |
 |----------|-----------------------------------------------|------------------------------------------------|---------------|
-| `GET`    | `/users search=X author=X page=0 count=1`     | Buscar por nombre de usuario (paginado)        | No            |
+| `GET`    | `/users search=X author=X page=0 count=1`     | Buscar por nombre de usuario (paginado)        | No            | aggregation
 | `POST`   | `/users`                                      | Crear nuevo usuario                            | **NO**        |
 | `GET`    | `/users/{userid}`                             | Consultar perfil de usuario                    | No            |
 | `DELETE` | `/users/{userid}`                             | Borrar usuario                                 | Si            |
@@ -187,13 +187,13 @@ Otras decisiones de diseño:
 
 | Verbo    | URL                                        | Descripción                  | Autenticación |
 |----------|--------------------------------------------|------------------------------|---------------|
-| `GET`    | `/posts search=X author=X page=0 count=10` | Buscar posts (paginado)      | No            |
+| `GET`    | `/posts search=X author=X page=0 count=10` | Buscar posts (paginado)      | No            | aggregation
 | `POST`   | `/posts`                                   | Crear un post                | Si            |
 | `GET`    | `/posts/{postid}`                          | Consultar un post            | No            |
 | `DELETE` | `/posts/{postid}`                          | Borrar un post               | Si            |
 | `POST`   | `/posts/{postid}/like`                     | Dar un like a un post        | Si            |
 | `DELETE` | `/posts/{postid}/like`                     | Quitar un like a un post     | Si            |
-| `GET`    | `/posts/{postid}/comments page=0 count=10` | Obtener lista de comentarios | No            |
+| `GET`    | `/posts/{postid}/comments page=0 count=10` | Obtener lista de comentarios | No            | page
 | `POST`   | `/posts/{postid}/comments`                 | Enviar comentario a un post  | Si            |
 
 <!-- TODO: editar post, borrar comentario, editar comentario -->
@@ -205,7 +205,7 @@ Otras decisiones de diseño:
 
 | Verbo    | URL                                                      | Descripción                            | Autenticación       |
 |----------|----------------------------------------------------------|----------------------------------------|---------------------|
-| `GET`    | `/parties search=XXX page=0 count=10`                    | Buscar _parties_ existentes (paginado) | No                  |
+| `GET`    | `/parties search=XXX page=0 count=10`                    | Buscar _parties_ existentes (paginado) | No                  | page
 | `POST`   | `/parties`                                               | Crear una nueva _party_                | Si                  |
 | `GET`    | `/parties/{party-id}`                                    | Obtener miembros de la _party_ y DM    | No                  |
 | `DELETE` | `/parties/{party-id}`                                    | Borrar _party_                         | Si (DM)             |

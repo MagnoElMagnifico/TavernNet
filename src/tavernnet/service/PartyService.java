@@ -3,12 +3,17 @@ package tavernnet.service;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import tavernnet.exception.InvalidCredentialsException;
 import tavernnet.exception.LimitException;
+import tavernnet.exception.NoCharacterSelectedException;
 import tavernnet.model.Message;
 import tavernnet.repository.CharacterRepository;
+import tavernnet.repository.MessageRepository;
 import tavernnet.repository.UserRepository;
 import tavernnet.utils.Utils;
 import org.slf4j.Logger;
@@ -32,27 +37,30 @@ public class PartyService {
     private final PartyRepository partyRepo;
     private final CharacterRepository charRepo;
     private final UserRepository userRepo;
+    private final MessageRepository msgRepo;
 
     @Autowired
     public PartyService(
         PartyRepository partyRepo,
         CharacterRepository charRepo,
-        UserRepository userRepo
+        UserRepository userRepo,
+        MessageRepository msgRepo
     ) {
         this.partyRepo = partyRepo;
         this.charRepo = charRepo;
         this.userRepo = userRepo;
+        this.msgRepo = msgRepo;
     }
 
-    public PagedModel<EntityModel<Party.Summary>> searchParties(
+    public Page<Party.Summary> searchParties(
         String search,
         int page,
         int count
     ) {
         log.info("GET /parties search={} page={} count={}", search, page, count);
-        // TODO: completar operacion
-        //var root = partyRepo.searchByIdWithCount();
-        return null;
+        return partyRepo
+            .searchParties(search, PageRequest.of(page, count))
+            .map(Party.Summary::fromParty);
     }
 
     public ObjectId createParty(Party.CreationRequest newParty) throws InvalidCredentialsException, ResourceNotFoundException {
@@ -145,17 +153,51 @@ public class PartyService {
 
     // ==== MENSAJES ===========================================================
 
-    public PagedModel<EntityModel<Message>> getMessages(
+    public Slice<Message> getMessages(
         ObjectId partyId,
-        LocalDateTime after,
-        int page,
+        String after,
         int count
-    ) {
-        // TODO: implementar
-        return null;
+    ) throws ResourceNotFoundException {
+        if (!partyRepo.existsById(partyId)) {
+            throw new ResourceNotFoundException("Party", partyId.toHexString());
+        }
+
+        // Obtener la slice de la BD
+        Slice<Message> slice;
+        var page = PageRequest.ofSize(count);
+        if (after == null || after.isBlank()) {
+            slice = msgRepo.getFirstSlice(partyId, page);
+        } else {
+            slice = msgRepo.getNextSlice(partyId, LocalDateTime.parse(after), page);
+        }
+
+        // Añadir detalles sobre el autor útiles para el cliente
+        for (Message msg : slice) {
+            Character character = charRepo
+                .findById(msg.getAuthor())
+                .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character for party member"));
+            msg.setAuthorDetails(new Character.Summary(
+                character.getUser(),
+                character.getId().toHexString(),
+                character.getName(),
+                character.getLevel()
+            ));
+        }
+
+        return slice;
     }
 
-    public void sendMessage(ObjectId partyId, Message.CreationRequest msg) {
-        // TODO: implementar
+    public void sendMessage(ObjectId partyId, Message.CreationRequest msg) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+        if (!partyRepo.existsById(partyId)) {
+            throw new ResourceNotFoundException("Party", partyId.toHexString());
+        }
+
+        User.AuthUser user = Utils.safeGetAuthUser();
+        if (user.activeCharacter() == null) {
+            throw new NoCharacterSelectedException();
+        }
+
+        Message newMsg = Message.fromRequest(msg, user.activeCharacter(), partyId);
+        msgRepo.save(newMsg);
     }
 }

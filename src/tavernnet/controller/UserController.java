@@ -74,22 +74,33 @@ public class UserController {
         // Links de hateoas
 
         response.add(linkTo(
-            methodOn(UserController.class).getUsers(searchTerm, pageNumber, pageSize)
+            methodOn(UserController.class)
+                .getUsers(searchTerm, pageNumber, pageSize)
         ).withSelfRel());
 
-        if(pageNumber < users.getTotalPages() - 1)
-            response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
-                pageNumber + 1, pageSize)).withRel(IanaLinkRelations.NEXT));
+        if (pageNumber < users.getTotalPages() - 1) {
+            response.add(linkTo(
+                methodOn(UserController.class)
+                    .getUsers(searchTerm, pageNumber + 1, pageSize)
+            ).withRel(IanaLinkRelations.NEXT));
+        }
 
-        if(pageNumber > 0)
-            response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
-                pageNumber - 1, pageSize)).withRel(IanaLinkRelations.PREVIOUS));
+        if (pageNumber > 0) {
+            response.add(linkTo(
+                methodOn(UserController.class)
+                    .getUsers(searchTerm, pageNumber - 1, pageSize)
+            ).withRel(IanaLinkRelations.PREVIOUS));
+        }
 
-        response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
-            0, pageSize)).withRel(IanaLinkRelations.FIRST));
+        response.add(linkTo(
+            methodOn(UserController.class)
+                .getUsers(searchTerm, 0, pageSize)
+        ).withRel(IanaLinkRelations.FIRST));
 
-        response.add(linkTo(methodOn(UserController.class).getUsers(searchTerm,
-            users.getTotalPages() - 1, pageSize)).withRel(IanaLinkRelations.LAST));
+        response.add(linkTo(
+            methodOn(UserController.class)
+                .getUsers(searchTerm, users.getTotalPages() - 1, pageSize)
+        ).withRel(IanaLinkRelations.LAST));
 
         return ResponseEntity.ok(response);
     }
@@ -104,7 +115,13 @@ public class UserController {
         @RequestBody @Valid User.LoginRequest request
     ) throws DuplicatedResourceException {
         userService.createUser(request);
-        return ResponseEntity.created(Utils.getUrl("getUser", UserController.class, request.username())).build();
+        return ResponseEntity
+            .created(Utils.getUrl(
+                "getUser",
+                UserController.class,
+                request.username())
+            )
+            .build();
     }
 
     // Servicio para obtener un usuario por ID

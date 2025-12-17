@@ -17,7 +17,7 @@ import tavernnet.model.Comment;
 
 @Repository
 @NullMarked
-public interface CommentsRepository extends MongoRepository<Comment, ObjectId> {
+public interface CommentRepository extends MongoRepository<Comment, ObjectId> {
     /**
      * Obtiene todos los comentarios de un post concreto.
      * @param postId ID del post al que pertenecen los comentarios.

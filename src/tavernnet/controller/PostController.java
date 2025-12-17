@@ -17,7 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
 import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.InvalidCredentialsException;
 import tavernnet.exception.NoCharacterSelectedException;
@@ -25,7 +24,6 @@ import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Comment;
 import tavernnet.model.Post;
 import tavernnet.model.PostView;
-import tavernnet.model.User;
 import tavernnet.service.PostService;
 import tavernnet.utils.Utils;
 import tavernnet.utils.ValidObjectId;
@@ -38,8 +36,8 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @ExposesResourceFor(Post.class)
 @NullMarked
 public class PostController {
-    PostService posts;
     private final EntityLinks entityLinks;
+    PostService posts;
 
     @Autowired
     public PostController(PostService posts, EntityLinks entityLinks) {
@@ -49,6 +47,7 @@ public class PostController {
 
     /**
      * <code>GET /posts</code>
+     *
      * @return <code>200 OK</code> con la lista de posts.
      */
     @GetMapping
@@ -70,44 +69,55 @@ public class PostController {
         @Max(value = 100, message = "Maximum posts per page is 100")
         int pageSize
     ) {
-        var found_posts = posts.searchPosts(searchTerm, author, pageNumber, pageSize);
+        var foundPosts = posts.searchPosts(searchTerm, author, pageNumber, pageSize);
 
         PagedModel<PostView> response = PagedModel.of(
-            found_posts.getContent(),
-            new PagedModel.PageMetadata(found_posts.getSize(),
-                found_posts.getNumber(),
-                found_posts.getTotalElements(),
-                found_posts.getTotalPages())
+            foundPosts.getContent(),
+            new PagedModel.PageMetadata(
+                foundPosts.getSize(),
+                foundPosts.getNumber(),
+                foundPosts.getTotalElements(),
+                foundPosts.getTotalPages()
+            )
         );
 
         // Links de hateoas
 
         response.add(linkTo(
-            methodOn(PostController.class).getPosts(searchTerm, author,
-                pageNumber, pageSize)).withSelfRel());
+            methodOn(PostController.class)
+                .getPosts(searchTerm, author, pageNumber, pageSize)
+        ).withSelfRel());
 
-        if(pageNumber < found_posts.getTotalPages() - 1)
-            response.add(linkTo(methodOn(PostController.class).getPosts(searchTerm,
-                author,pageNumber + 1,
-                pageSize)).withRel(IanaLinkRelations.NEXT));
+        if (pageNumber < foundPosts.getTotalPages() - 1) {
+            response.add(linkTo(
+                methodOn(PostController.class)
+                    .getPosts(searchTerm, author, pageNumber + 1, pageSize)
+            ).withRel(IanaLinkRelations.NEXT));
+        }
 
-        if(pageNumber > 0)
-            response.add(linkTo(methodOn(PostController.class).getPosts(searchTerm,
-                author,pageNumber - 1,
-                pageSize)).withRel(IanaLinkRelations.PREVIOUS));
+        if (pageNumber > 0) {
+            response.add(linkTo(
+                methodOn(PostController.class)
+                    .getPosts(searchTerm, author, pageNumber - 1, pageSize)
+            ).withRel(IanaLinkRelations.PREVIOUS));
+        }
 
-        response.add(linkTo(methodOn(PostController.class).getPosts(searchTerm,
-            author,0, pageSize)).withRel(IanaLinkRelations.FIRST));
+        response.add(linkTo(
+            methodOn(PostController.class)
+                .getPosts(searchTerm, author, 0, pageSize)
+        ).withRel(IanaLinkRelations.FIRST));
 
-        response.add(linkTo(methodOn(PostController.class).getPosts(searchTerm,
-            author,found_posts.getTotalPages() - 1,
-            pageSize)).withRel(IanaLinkRelations.LAST));
+        response.add(linkTo(
+            methodOn(PostController.class)
+                .getPosts(searchTerm, author, foundPosts.getTotalPages() - 1, pageSize)
+        ).withRel(IanaLinkRelations.LAST));
 
         return ResponseEntity.ok(response);
     }
 
     /**
      * <code>POST /posts</code>
+     *
      * @param newPost Nueva publicación.
      * @return <code>201 Created</code> en éxito.
      */
@@ -123,6 +133,7 @@ public class PostController {
 
     /**
      * <code>GET /posts/{postid}</code>
+     *
      * @param postId Identificador del post.
      * @return <code>200 OK</code> con el post solicitado, <code>404 Not
      * found</code> si no existe el ID proporcionado.
@@ -140,26 +151,36 @@ public class PostController {
         EntityModel<PostView> response = EntityModel.of(posts.getPost(postId));
 
         // Links de hateoas
-        response.add(entityLinks.linkToItemResource(Post.class, postId).withSelfRel());
+        response.add(entityLinks
+            .linkToItemResource(Post.class, postId)
+            .withSelfRel()
+        );
 
-        response.add(entityLinks.linkToCollectionResource(Post.class).withRel(
-            IanaLinkRelations.COLLECTION));
+        response.add(entityLinks
+            .linkToCollectionResource(Post.class)
+            .withRel(IanaLinkRelations.COLLECTION)
+        );
 
         // El link al autor del post requiere el usuario y nombre de personaje
         // para acceder al recurso
         String characterName = response.getContent().getAuthorDetails().characterName();
         String username = response.getContent().getAuthorDetails().username();
-        response.add(linkTo(methodOn(CharacterController.class).getCharacter(
-            username, characterName)).withRel(IanaLinkRelations.AUTHOR));
+        response.add(linkTo(
+            methodOn(CharacterController.class)
+                .getCharacter(username, characterName)
+        ).withRel(IanaLinkRelations.AUTHOR));
 
-        response.add(linkTo(methodOn(PostController.class).getCommentsByPost(
-            postId,0,10)).withRel("comments"));
+        response.add(linkTo(
+            methodOn(PostController.class)
+                .getCommentsByPost(postId, 0, 10)
+        ).withRel("comments"));
 
         return ResponseEntity.ok(response);
     }
 
     /**
      * <code>DELETE /posts/{postid}</code>
+     *
      * @param postId Identificador del post.
      * @return <code>204 No content</code> en éxito, <code>404 Not found</code>
      * si no existe el ID proporcionado.
@@ -203,6 +224,7 @@ public class PostController {
 
     /**
      * <code>GET /posts/{postid}/comments</code>
+     *
      * @param postId ID del post del que obtener los comentarios.
      * @return <code>200 OK</code> en éxito, <code>404 Not found</code> si
      * no existe el ID proporcionado.
@@ -227,42 +249,53 @@ public class PostController {
         @Max(value = 100, message = "Maximum posts per page is 100")
         int pageSize
     ) throws ResourceNotFoundException {
-        var found_comments = posts.getCommentsByPost(postId, pageNumber, pageSize);
+        var foundComments = posts.getCommentsByPost(postId, pageNumber, pageSize);
         PagedModel<Comment> response = PagedModel.of(
-            found_comments.getContent(),
-            new PagedModel.PageMetadata(found_comments.getSize(),
-                found_comments.getNumber(),
-                found_comments.getTotalElements(),
-                found_comments.getTotalPages())
+            foundComments.getContent(),
+            new PagedModel.PageMetadata(foundComments.getSize(),
+                foundComments.getNumber(),
+                foundComments.getTotalElements(),
+                foundComments.getTotalPages())
         );
 
         // Links de hateoas
 
         response.add(linkTo(
-            methodOn(PostController.class).getCommentsByPost(postId,
-                pageNumber, pageSize)).withSelfRel());
+            methodOn(PostController.class)
+                .getCommentsByPost(postId, pageNumber, pageSize)
+        ).withSelfRel());
 
-        if(pageNumber < found_comments.getTotalPages() - 1)
-            response.add(linkTo(methodOn(PostController.class).getCommentsByPost(postId,
-                pageNumber + 1, pageSize)).withRel(IanaLinkRelations.NEXT));
+        if (pageNumber < foundComments.getTotalPages() - 1) {
+            response.add(linkTo(
+                methodOn(PostController.class)
+                    .getCommentsByPost(postId, pageNumber + 1, pageSize)
+            ).withRel(IanaLinkRelations.NEXT));
+        }
 
-        if(pageNumber > 0)
-            response.add(linkTo(methodOn(PostController.class).getCommentsByPost(postId,
-                pageNumber - 1, pageSize)).withRel(IanaLinkRelations.PREVIOUS));
+        if (pageNumber > 0) {
+            response.add(linkTo(
+                methodOn(PostController.class)
+                    .getCommentsByPost(postId, pageNumber - 1, pageSize)
+            ).withRel(IanaLinkRelations.PREVIOUS));
+        }
 
-        response.add(linkTo(methodOn(PostController.class).getCommentsByPost(postId,
-            0, pageSize)).withRel(IanaLinkRelations.FIRST));
+        response.add(linkTo(
+            methodOn(PostController.class)
+                .getCommentsByPost(postId, 0, pageSize)
+        ).withRel(IanaLinkRelations.FIRST));
 
-        response.add(linkTo(methodOn(PostController.class).getCommentsByPost(postId,
-            found_comments.getTotalPages() - 1,
-            pageSize)).withRel(IanaLinkRelations.LAST));
+        response.add(linkTo(
+            methodOn(PostController.class)
+                .getCommentsByPost(postId, foundComments.getTotalPages() - 1, pageSize)
+        ).withRel(IanaLinkRelations.LAST));
 
         return ResponseEntity.ok(response);
     }
 
     /**
      * <code>POST /posts/{postid}/comments</code>
-     * @param postId ID del post en el que crear el comentario.
+     *
+     * @param postId     ID del post en el que crear el comentario.
      * @param newComment Contenido del comentario.
      * @return <code>201 Created</code> en éxito, <code>404 Not found</code> si
      * no existe el ID proporcionado.
@@ -277,6 +310,12 @@ public class PostController {
         Comment.CommentRequest newComment
     ) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
         posts.createComment(postId, newComment);
-        return ResponseEntity.created(Utils.getUrl("getCommentsByPost", PostController.class, postId, 0, 1)).build();
+        return ResponseEntity
+            .created(Utils.getUrl(
+                "getCommentsByPost",
+                PostController.class,
+                postId, 0, 1
+            ))
+            .build();
     }
 }

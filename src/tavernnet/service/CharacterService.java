@@ -101,7 +101,7 @@ public class CharacterService {
             throw new DuplicatedResourceException(newCharacter, "Character", newCharacter.name());
         }
 
-        // Comprobar que el usuario tiene menos del numero de personajes permitidos
+        // Comprobar que el usuario tiene menos del número de personajes permitidos
         if (charRepo.countUserCharacters(username) >= 10) {
             log.debug("POST /users/{}/characters user has already 10 characters", username);
             throw new LimitException("Cannot create more than 10 characters");
@@ -128,7 +128,7 @@ public class CharacterService {
             throw new ResourceNotFoundException("Character", characterName);
         }
 
-        // Comprobar que las operaciones estan permitidas
+        // Comprobar que las operaciones están permitidas
         for (JsonPatchOperation operation : changes) {
             Character.validatePatch(operation);
         }

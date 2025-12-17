@@ -28,11 +28,15 @@ public class Party implements Ownable {
         @ValidObjectId String id,
         @NotBlank String name,
         int members
-    ) {}
+    ) {
+        public static Summary fromParty(Party party) {
+            return new Summary(party.getId().toHexString(), party.getName(), party.getMembersIds().size());
+        }
+    }
 
     @NullMarked
     public record CreationRequest (
-        // NOTA: el DM se lee de la autenticacion
+        // NOTA: el DM se lee de la autenticación
         @Nullable String name,
         @Nullable String description,
         @JsonProperty("initial_members")
@@ -52,6 +56,7 @@ public class Party implements Ownable {
 
     @Transient
     @ValidObjectId
+    @JsonProperty("id")
     private final String idStr;
 
     @NotBlank

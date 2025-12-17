@@ -14,7 +14,7 @@ import java.util.Optional;
 /** Acceso a la vista <code>posts_view</code>. No se permiten operaciones de escritura */
 @Repository
 @NullMarked
-public interface PostsViewRepository extends MongoRepository<PostView, ObjectId> {
+public interface PostViewRepository extends MongoRepository<PostView, ObjectId> {
 
     @Aggregation(pipeline = {
         "{ $match: ?0 }",
