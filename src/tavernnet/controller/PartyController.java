@@ -1,5 +1,6 @@
 package tavernnet.controller;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -8,7 +9,10 @@ import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.hateoas.MediaTypes;
 import org.springframework.hateoas.PagedModel;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -17,12 +21,17 @@ import tavernnet.exception.LimitException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Message;
 import tavernnet.model.Party;
+import tavernnet.model.PostView;
+import tavernnet.model.User;
 import tavernnet.service.PartyService;
 import tavernnet.utils.Utils;
 import tavernnet.utils.ValidObjectId;
 
 import java.time.LocalDateTime;
 import java.util.Set;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("parties")
@@ -36,25 +45,59 @@ public class PartyController {
         this.partyService = partyService;
     }
 
-    @GetMapping
+    @GetMapping(produces = MediaTypes.HAL_JSON_VALUE)
+    @JsonView(Party.class)
     @PreAuthorize("true")
-    public PagedModel<EntityModel<Party.Summary>> searchParties(
+    public ResponseEntity<PagedModel<Party.Summary>> searchParties(
         @RequestParam(value = "search", required = false, defaultValue = "")
-        String search,
+        String searchTerm,
 
         @RequestParam(value = "page", required = false, defaultValue = "0")
         @Min(value = 0, message = "Minimum page is 0")
-        int page,
+        int pageNumber,
 
         @RequestParam(value = "count", required = false, defaultValue = "10")
         @Min(value = 1, message = "Minimum parties per page is 1")
         @Max(value = 100, message = "Maximum parties per page is 100")
-        int count
+        int pageSize
     ) {
-        return partyService.searchParties(search, page, count);
+        var found_parties = partyService.searchParties(searchTerm, pageNumber, pageSize);
+
+        PagedModel<Party.Summary> response = PagedModel.of(
+            found_parties.getContent(),
+            new PagedModel.PageMetadata(found_parties.getSize(),
+                found_parties.getNumber(),
+                found_parties.getTotalElements(),
+                found_parties.getTotalPages())
+        );
+
+        // Links de hateoas
+
+        response.add(linkTo(
+            methodOn(PartyController.class).searchParties(searchTerm, pageNumber, pageSize)
+        ).withSelfRel());
+
+        if(pageNumber < found_parties.getTotalPages() - 1)
+            response.add(linkTo(methodOn(PartyController.class).searchParties(searchTerm,
+                pageNumber + 1, pageSize)).withRel(IanaLinkRelations.NEXT));
+
+        if(pageNumber > 0)
+            response.add(linkTo(methodOn(PartyController.class).searchParties(searchTerm,
+                pageNumber - 1, pageSize)).withRel(IanaLinkRelations.PREVIOUS));
+
+        response.add(linkTo(methodOn(PartyController.class).searchParties(searchTerm,
+            0, pageSize)).withRel(IanaLinkRelations.FIRST));
+
+        response.add(linkTo(methodOn(PartyController.class).searchParties(searchTerm,
+            found_parties.getTotalPages() - 1, pageSize)).withRel(IanaLinkRelations.LAST));
+
+        return ResponseEntity.ok(response);
     }
 
-    @PostMapping
+    @PostMapping(
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> createParty(
         @RequestBody Party.@Valid CreationRequest request
@@ -69,12 +112,16 @@ public class PartyController {
             .build();
     }
 
-    @GetMapping("{party}")
+    @GetMapping(
+        path = "{party}",
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @JsonView(Party.class)
     @PreAuthorize("true")
-    public Party getParty(
+    public ResponseEntity<Party> getParty(
         @PathVariable("party") @ValidObjectId ObjectId partyId
     ) throws ResourceNotFoundException {
-        return partyService.getParty(partyId);
+        return ResponseEntity.ok(partyService.getParty(partyId));
     }
 
     @DeleteMapping("{party}")
