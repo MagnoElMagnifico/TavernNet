@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '4.0.0'
+    id 'org.springframework.boot' version '4.0.0-SNAPSHOT'
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -28,6 +28,7 @@ allprojects {
 
 repositories {
     mavenCentral()
+    maven { url = 'https://repo.spring.io/snapshot' }
 }
 
 // Simplificar estructura de carpetas
@@ -43,7 +44,8 @@ bootJar {
 dependencies {
     // Aplicaciones REST usando Spring. Usa Tomcat embebido como servidor
     // NOTA: com.fasterxml.jackson para las anotaciones, tools.jackson para lo demas
-    implementation 'org.springframework.boot:spring-boot-starter-web'
+    //implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 
     // Bases de datos: MongoDB y Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
@@ -62,9 +64,10 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-gson:0.13.0'
 
     // OAS
-    //implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0-RC1'
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0")
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-scalar:3.0.0-RC1'
+
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+    //implementation 'org.springdoc:springdoc-openapi-starter-webmvc-scalar:3.0.0-RC1'
+    implementation('org.springdoc:springdoc-openapi-starter-webmvc-scalar:2.7.0')
 
     // Hateoas
     implementation 'org.springframework.boot:spring-boot-starter-hateoas'

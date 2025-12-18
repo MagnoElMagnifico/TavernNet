@@ -76,6 +76,8 @@ hx .
 # Arquitectura
 
 <!-- TODO: diagrama de la arquitectura -->
+
+![](doc/diagrama_arquitectura.png)
 <!-- TODO: mostrar los 2 dockerfiles -->
 
 # Diseño de la API

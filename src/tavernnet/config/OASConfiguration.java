@@ -11,11 +11,19 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.security.SecuritySchemes;
 import io.swagger.v3.oas.annotations.servers.Server;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 
 @Configuration
 @SecuritySchemes({
-    @SecurityScheme(type = SecuritySchemeType.HTTP, name = "jwt", in = SecuritySchemeIn.HEADER),
-    @SecurityScheme(type = SecuritySchemeType.HTTP, name = "refresh", in = SecuritySchemeIn.HEADER)
+    @SecurityScheme(
+        type = SecuritySchemeType.HTTP,
+        name = "jwt",
+        description = "Standard JWT token authentication",
+        in = SecuritySchemeIn.HEADER,
+        paramName = HttpHeaders.AUTHORIZATION,
+        scheme = "Bearer",
+        bearerFormat = "JWT"
+    )
 })
 
 @OpenAPIDefinition(
@@ -32,7 +40,11 @@ import org.springframework.context.annotation.Configuration;
             name = "Marcos Granja Grille, Jeremías Alvarenga Gamón",
             email = "marcos.granja@rai.usc.es , jeremiasezequiel.alvarenga@rai.usc.es"
             ),
-        license=@License(name = "Apache 2.0"),
+        license = @License(
+            name = "Apache 2.0",
+            identifier = "Apache-2.0",
+            url = "https://spdx.org/licenses/Apache-2.0.html"
+        ),
         version = "0.1.0"
     ),
     servers = {
