@@ -207,7 +207,7 @@ public class PartyController {
         ObjectId partyId,
 
         @Parameter(description = "The cursor from which next messages appear, expressed as a date",
-            example = "2025-12-17T02:42:00Z")
+            example = "2025-12-17T02:42.400Z")
         @RequestParam(value = "after", required = false, defaultValue = "")
         String after,
 
