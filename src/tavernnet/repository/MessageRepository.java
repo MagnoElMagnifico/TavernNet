@@ -28,4 +28,7 @@ public interface MessageRepository extends MongoRepository<Message, ObjectId> {
         sort = "{ 'creation': -1, '_id': -1 }"
     )
     Slice<Message> getNextSlice(ObjectId partyId, LocalDateTime creation, Pageable page);
+
+    @Query(value = "{ 'party': ?0 }", delete = true)
+    void deleteAllByParty(ObjectId partyId);
 }

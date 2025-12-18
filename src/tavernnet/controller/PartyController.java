@@ -13,15 +13,11 @@ import org.springframework.hateoas.MediaTypes;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.hateoas.server.ExposesResourceFor;
 import org.springframework.http.MediaType;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import tavernnet.exception.InvalidCredentialsException;
-import tavernnet.exception.LimitException;
-import tavernnet.exception.NoCharacterSelectedException;
-import tavernnet.exception.ResourceNotFoundException;
+import tavernnet.exception.*;
 import tavernnet.model.Message;
 import tavernnet.model.Party;
 import tavernnet.model.User;
@@ -230,7 +226,7 @@ public class PartyController {
         ObjectId partyId,
         @RequestBody
         Message.@Valid CreationRequest message
-    ) throws InvalidCredentialsException, ResourceNotFoundException, NoCharacterSelectedException {
+    ) throws InvalidCredentialsException, ResourceNotFoundException, NoCharacterSelectedException, InvalidMessageException {
         partyService.sendMessage(partyId, message);
         return ResponseEntity
             .created(Utils.getUrl(

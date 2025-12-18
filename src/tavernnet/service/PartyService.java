@@ -1,19 +1,15 @@
 package tavernnet.service;
 
-import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.domain.Slice;
-import tavernnet.exception.InvalidCredentialsException;
-import tavernnet.exception.LimitException;
+import org.springframework.security.access.AccessDeniedException;
+import tavernnet.exception.*;
 import tavernnet.model.*;
 import tavernnet.model.Character;
-import tavernnet.exception.NoCharacterSelectedException;
 import tavernnet.model.Message;
 import tavernnet.repository.CharacterRepository;
 import tavernnet.repository.MessageRepository;
@@ -22,12 +18,10 @@ import tavernnet.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.repository.PartyRepository;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.regex.Pattern;
 
 @Service
 @NullMarked
@@ -58,22 +52,10 @@ public class PartyService {
         int page,
         int count
     ) {
-        log.info("GET /parties search={} page={} count={}", search, page, count);
-        // TODO: completar operacion
-        // Crear un documento para filtrar
-        Pattern pattern = search.isBlank()
-            ? Pattern.compile(".*", Pattern.CASE_INSENSITIVE)
-            : Pattern.compile(".*" + Pattern.quote(search) + ".*", Pattern.CASE_INSENSITIVE);
-        Document match = new Document();
-
-        List<Document> orList = new ArrayList<>();
-        orList.add(new Document("name", pattern));
-        orList.add(new Document("content", pattern));
-        match.put("$or", orList);
-
-        var root = partyRepo.searchParties(match, page, count);
-
-        return toPage(root, page, count);
+        log.debug("GET /parties search={} page={} count={}", search, page, count);
+        return partyRepo
+            .searchParties(search, PageRequest.of(page, count))
+            .map(Party.Summary::fromParty);
     }
 
     public ObjectId createParty(Party.CreationRequest newParty) throws InvalidCredentialsException, ResourceNotFoundException {
@@ -90,7 +72,7 @@ public class PartyService {
 
         // Almacenar en la BD
         Party party = partyRepo.save(Party.fromRequest(newParty, user.username()));
-        log.info("POST /parties new party=\"{}\"", party.getId());
+        log.debug("POST /parties new party=\"{}\"", party.getId());
         return party.getId();
     }
 
@@ -98,6 +80,8 @@ public class PartyService {
         Party party = partyRepo
             .findById(partyId)
             .orElseThrow(() -> new ResourceNotFoundException("Party", partyId.toHexString()));
+
+        log.debug("GET /party/{} members={}", partyId, party.getMembersIds().size());
 
         // Configurar detalles de los personajes miembros
         party.setMemberDetails(
@@ -118,7 +102,10 @@ public class PartyService {
         if (!partyRepo.existsById(partyId)) {
             throw new ResourceNotFoundException("Party", partyId.toHexString());
         }
+        log.debug("DELETE /party/{} party deleted", partyId);
         partyRepo.deleteById(partyId);
+        log.debug("DELETE /party/{} party's messages deleted", partyId);
+        msgRepo.deleteAllByParty(partyId);
     }
 
     // ==== EDITAR PARTY =======================================================
@@ -132,6 +119,7 @@ public class PartyService {
             throw new ResourceNotFoundException("User", dm.username());
         }
 
+        log.debug("PUT /party/{}/dm DM updated to user=\"{}\"", partyId, dm.username());
         partyRepo.updateDm(partyId, dm.username());
     }
 
@@ -151,6 +139,7 @@ public class PartyService {
             }
         }
 
+        log.debug("POST /party/{}/members added new members={}", partyId, newMembers.size());
         partyRepo.addMembers(partyId, newMembers);
     }
 
@@ -162,6 +151,8 @@ public class PartyService {
         if (partyRepo.removeMember(partyId, member) != 1) {
             throw new ResourceNotFoundException("Character", member.toHexString());
         }
+
+        log.debug("DELETE /party/{}/members/{} deleted member", partyId, member);
     }
 
     // ==== MENSAJES ===========================================================
@@ -180,76 +171,68 @@ public class PartyService {
         var page = PageRequest.ofSize(count);
         if (after == null || after.isBlank()) {
             slice = msgRepo.getFirstSlice(partyId, page);
+            log.debug("GET /party/{}/messages first slice after=\"{}\" count={}", partyId, after, count);
         } else {
             slice = msgRepo.getNextSlice(partyId, LocalDateTime.parse(after), page);
+            log.debug("GET /party/{}/messages next slice after=\"{}\" count={}", partyId, after, count);
         }
 
         // Añadir detalles sobre el autor útiles para el cliente
         for (Message msg : slice) {
-            Character character = charRepo
-                .findById(msg.getAuthor())
-                .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character for party member"));
-            msg.setAuthorDetails(new Character.Summary(
-                character.getUser(),
-                character.getId().toHexString(),
-                character.getName(),
-                character.getLevel()
-            ));
+            if (msg.getAuthor() instanceof Message.CharacterAuthor charAuthor) {
+                Character character = charRepo
+                    .findById(charAuthor.characterId())
+                    .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character for party member"));
+                msg.setAuthorDetails(new Character.Summary(
+                    character.getUser(),
+                    character.getId().toHexString(),
+                    character.getName(),
+                    character.getLevel()
+                ));
+            }
         }
 
         return slice;
     }
 
-    public void sendMessage(ObjectId partyId, Message.CreationRequest msg) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
-        if (!partyRepo.existsById(partyId)) {
-            throw new ResourceNotFoundException("Party", partyId.toHexString());
+    public void sendMessage(ObjectId partyId, Message.CreationRequest msg) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException, InvalidMessageException {
+        Party party = partyRepo
+            .findById(partyId)
+            .orElseThrow(() -> new ResourceNotFoundException("Party", partyId.toHexString()));
+
+        if (msg.dice() == null && msg.text() == null) {
+            throw new InvalidMessageException("Message cannot be empty: add text or dice roll");
         }
 
         User.AuthUser user = Utils.safeGetAuthUser();
-        if (user.activeCharacter() == null) {
-            throw new NoCharacterSelectedException();
-        }
 
-        Message newMsg = Message.fromRequest(msg, user.activeCharacter(), partyId);
-        msgRepo.save(newMsg);
-    }
-
-    private Page<Party.Summary> toPage(AggregationResults<Document> root, int pageNumber, int pageSize) {
-        var realRoot = root.getMappedResults().getFirst();
-
-        long totalCount = 0;
-        if (realRoot.get("total_count") instanceof List<?> list
-            && !list.isEmpty()
-            && list.getFirst() instanceof Map<?, ?> map
-            && map.get("count") instanceof Number n) {
-            totalCount = n.longValue();
-        }
-
-        // Para saber si el usuario actual le ha dado like, debemos saber qué usuario es
-        User.AuthUser authUser = Utils.getAuthUser();
-        ObjectId activeChar = authUser == null? null : authUser.activeCharacter();
-
-        List<Party.Summary> pageContent = new ArrayList<>();
-        if (realRoot.get("page_data") instanceof List<?> pageData) {
-            for (Object obj : pageData) {
-                if (!(obj instanceof Document doc)) {
-                    continue;
-                }
-
-                Party.Summary party = new Party.Summary(
-                    doc.getObjectId("_id").toString(),
-                    doc.getString("name"),
-                    doc.getList("members", ObjectId.class).size()
+        // Si no es DM y se intento usar un mensaje propio de un DM, error
+        if (user.username().equals(party.getDm()))  {
+            // En caso de que no hay autor, configurarlo para hablar como el DM
+            if (msg.author() == null) {
+                msg = new Message.CreationRequest(
+                    Message.DmAuthor.asDm(),
+                    msg.text(),
+                    msg.dice()
                 );
+            }
+        } else {
+            // Si no es DM, no puede enviar un mensaje como tal
+            if (msg.author() != null) {
+                throw new AccessDeniedException("User \"%s\" is not DM: cannot send message as DM".formatted(user.username()));
+            }
 
-                pageContent.add(party);
+            // Si no es DM, el resto de usuarios deben actuar a traves de un personaje
+            if (user.activeCharacter() == null) {
+                throw new NoCharacterSelectedException();
             }
         }
 
-        return new PageImpl<>(
-            pageContent,
-            PageRequest.of(pageNumber, pageSize),
-            totalCount
+        Message newMsg = Message.fromRequest(msg, user.activeCharacter(), partyId);
+        newMsg = msgRepo.save(newMsg);
+        log.debug(
+            "POST /party/{}/messages id=\"{}\" text=\"{}\" roll=\"{}\" author=\"{}\"",
+            partyId, newMsg.getId(), newMsg.getText(), newMsg.getRoll(), newMsg.getAuthor()
         );
     }
 }

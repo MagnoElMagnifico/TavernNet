@@ -303,4 +303,15 @@ public class ErrorController {
         problem.setType(getType("no-character"));
         return ErrorResponse.builder(ex, problem).build();
     }
+
+    // Mensaje vacio
+    @ExceptionHandler(InvalidMessageException.class)
+    public ErrorResponse handleNotActiveCharacter(InvalidMessageException ex, HttpServletRequest request) {
+        log.warn("Empty message {}: {}", request.getRequestURI(), ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_CONTENT);
+        problem.setTitle("Message cannot be empty");
+        problem.setDetail(ex.getMessage());
+        problem.setType(getType("empty-message"));
+        return ErrorResponse.builder(ex, problem).build();
+    }
 }

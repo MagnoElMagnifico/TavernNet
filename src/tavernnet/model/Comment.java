@@ -133,7 +133,7 @@ public class Comment implements Ownable {
         this.authorDetails = Character.Summary.deleted();
     }
 
-    @JsonInclude
+    @JsonIgnore
     @Override
     public String getOwnerId() {
         return author.toHexString();

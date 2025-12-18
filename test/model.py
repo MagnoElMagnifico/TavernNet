@@ -49,8 +49,6 @@ def test_model():
     check(r, HTTPStatus.OK, quiet=True)
     _print_json(r.json())
 
-    # TODO: Party y mensaje
-
 
 if __name__ == '__main__':
     setup()

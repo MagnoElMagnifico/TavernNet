@@ -1,5 +1,5 @@
 from .login import test_login
-from .parties import test_parties
+from .parties import test_parties_messages
 from .posts import test_posts
 from .users_characters import test_noauth_character, test_noauth_user, test_auth_characters, test_auth_user
 from .model import test_model
@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     test_login(user)
     test_posts(user)
-    test_parties(user)
+    test_parties_messages(user)
 
     print('\n==== ADMIN ======================================================')
     # TODO: ADMIN

@@ -1,8 +1,6 @@
 package tavernnet.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.*;
 import jakarta.validation.Valid;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
@@ -17,9 +15,50 @@ import java.util.Objects;
 @NullMarked
 public class Message implements Ownable {
 
+    // ==== TIPOS DE DATOS ASOCIADOS ===========================================
+
+    @JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.PROPERTY,
+        property = "type"
+    )
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = CharacterAuthor.class, name = "CHARACTER"),
+        @JsonSubTypes.Type(value = DmAuthor.class, name = "DM")
+    })
+    public sealed interface Author permits CharacterAuthor, DmAuthor {}
+
+    public record CharacterAuthor (
+        @JsonIgnore
+        ObjectId characterId,
+
+        @Valid
+        @Transient
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @JsonProperty("character")
+        Character.@Nullable Summary summary
+    ) implements Author {}
+
+    public record DmAuthor (
+        String name,
+
+        @Nullable
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        String race,
+
+        @Nullable
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        Integer level
+    ) implements Author {
+        public static DmAuthor asDm() {
+            return new DmAuthor("[DM]", null, null);
+        }
+    }
+
     // ==== DTOs ===============================================================
 
     public record CreationRequest (
+        @Nullable @Valid DmAuthor author,
         @Nullable String text,
         @Nullable String dice
         // TODO: image
@@ -32,53 +71,48 @@ public class Message implements Ownable {
     @JsonIgnore
     private final ObjectId id;
 
-    @Valid
-    @JsonIgnore
-    private final ObjectId author;
-
-    @Valid
-    @Transient
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonProperty("author")
-    private Character.@Nullable Summary authorDetails;
-
     @JsonIgnore
     private final ObjectId party;
+
+    @Valid
+    private Author author;
 
     @Valid
     private final LocalDateTime creation;
 
     // ---- CONTENIDO ----
     @Nullable
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private final String text;
 
-    // TODO: image
+    // TODO: imagen como mensaje
 
-    private final Dice.@Nullable Roll dice;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final Dice.@Nullable Roll roll;
 
     // ==== CONSTRUCTORES ======================================================
 
     @PersistenceCreator
     public Message(
         ObjectId id,
-        ObjectId author,
+        Author author,
         ObjectId party,
         LocalDateTime creation,
         @Nullable String text,
-        Dice.@Nullable Roll dice
+        Dice.@Nullable Roll roll
     ) {
         this.id = id;
         this.author = author;
         this.party = party;
         this.creation = creation;
         this.text = text;
-        this.dice = dice;
+        this.roll = roll;
     }
 
-    public static Message fromRequest(CreationRequest r, ObjectId author, ObjectId party) {
+    public static Message fromRequest(CreationRequest r, ObjectId authorId, ObjectId party) {
         return new Message(
             null,
-            author,
+            Objects.requireNonNullElseGet(r.author, () -> new CharacterAuthor(authorId, null)),
             party,
             LocalDateTime.now(),
             r.text(),
@@ -92,12 +126,8 @@ public class Message implements Ownable {
         return id;
     }
 
-    public ObjectId getAuthor() {
+    public Author getAuthor() {
         return author;
-    }
-
-    public Character.@Nullable Summary getAuthorDetails() {
-        return authorDetails;
     }
 
     public ObjectId getParty() {
@@ -112,24 +142,39 @@ public class Message implements Ownable {
         return text;
     }
 
-    public Dice.@Nullable Roll getDice() {
-        return dice;
+    public Dice.@Nullable Roll getRoll() {
+        return roll;
     }
 
     // ==== OTROS MÉTODOS ======================================================
 
     public void setAuthorDetails(Character.@Nullable Summary authorDetails) {
-        this.authorDetails = authorDetails;
+        switch (author) {
+            case CharacterAuthor character -> this.author = new CharacterAuthor(
+                character.characterId,
+                authorDetails
+            );
+            case DmAuthor dm -> { /* no hacer nada */ }
+        }
     }
 
     public void setAuthorDeleted() {
-        this.authorDetails = Character.Summary.deleted();
+        switch (author) {
+            case CharacterAuthor character -> this.author = new CharacterAuthor(
+                character.characterId,
+                Character.Summary.deleted()
+            );
+            case DmAuthor dm -> { /* no hacer nada */ }
+        }
     }
 
     @JsonIgnore
     @Override
-    public String getOwnerId() {
-        return author.toHexString();
+    public @Nullable String getOwnerId() {
+        return switch (author) {
+            case CharacterAuthor character -> character.characterId.toHexString();
+            case DmAuthor dm -> null;
+        };
     }
 
     @Override

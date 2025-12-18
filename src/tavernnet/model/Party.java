@@ -76,6 +76,7 @@ public class Party implements Ownable {
     @Transient
     @Nullable
     @Size(max=20)
+    @JsonProperty("members")
     private Collection<Character.Summary> memberDetails;
 
     // ==== CONSTRUCTORES ======================================================

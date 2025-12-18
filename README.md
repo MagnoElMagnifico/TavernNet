@@ -63,13 +63,13 @@ hx .
 
 # Introducción
 
-<!-- TODO: explicar lo que es D&D, poner una captura de una ficha de personaje -->
+![](doc/dnd-beyond.png)
 
 # Diseño del modelo de datos
 
 <!-- TODO: actualizar el diagrama -->
 
-![](TavernNet.png)
+![](doc/TavernNet.png)
 
 <!-- TODO: explicar criterios de borrado -->
 
@@ -84,7 +84,7 @@ hx .
 
 | Verbo    | URL                                           | Descripción                                    | Autenticación |
 |----------|-----------------------------------------------|------------------------------------------------|---------------|
-| `GET`    | `/users search=X author=X page=0 count=1`     | Buscar por nombre de usuario (paginado)        | No            | aggregation
+| `GET`    | `/users search=X author=X page=0 count=1`     | Buscar por nombre de usuario (paginado)        | No            |
 | `POST`   | `/users`                                      | Crear nuevo usuario                            | **NO**        |
 | `GET`    | `/users/{userid}`                             | Consultar perfil de usuario                    | No            |
 | `DELETE` | `/users/{userid}`                             | Borrar usuario                                 | Si            |
@@ -187,13 +187,13 @@ Otras decisiones de diseño:
 
 | Verbo    | URL                                        | Descripción                  | Autenticación |
 |----------|--------------------------------------------|------------------------------|---------------|
-| `GET`    | `/posts search=X author=X page=0 count=10` | Buscar posts (paginado)      | No            | aggregation
+| `GET`    | `/posts search=X author=X page=0 count=10` | Buscar posts (paginado)      | No            |
 | `POST`   | `/posts`                                   | Crear un post                | Si            |
 | `GET`    | `/posts/{postid}`                          | Consultar un post            | No            |
 | `DELETE` | `/posts/{postid}`                          | Borrar un post               | Si            |
 | `POST`   | `/posts/{postid}/like`                     | Dar un like a un post        | Si            |
 | `DELETE` | `/posts/{postid}/like`                     | Quitar un like a un post     | Si            |
-| `GET`    | `/posts/{postid}/comments page=0 count=10` | Obtener lista de comentarios | No            | page
+| `GET`    | `/posts/{postid}/comments page=0 count=10` | Obtener lista de comentarios | No            |
 | `POST`   | `/posts/{postid}/comments`                 | Enviar comentario a un post  | Si            |
 
 <!-- TODO: editar post, borrar comentario, editar comentario -->
@@ -203,17 +203,17 @@ Otras decisiones de diseño:
 
 ## _Parties_ y mensajes (`PartyService`)
 
-| Verbo    | URL                                                      | Descripción                            | Autenticación       |
-|----------|----------------------------------------------------------|----------------------------------------|---------------------|
-| `GET`    | `/parties search=XXX page=0 count=10`                    | Buscar _parties_ existentes (paginado) | No                  | page
-| `POST`   | `/parties`                                               | Crear una nueva _party_                | Si                  |
-| `GET`    | `/parties/{party-id}`                                    | Obtener miembros de la _party_ y DM    | No                  |
-| `DELETE` | `/parties/{party-id}`                                    | Borrar _party_                         | Si (DM)             |
-| `PUT`    | `/parties/{party-id}/dm`                                 | Cambiar DM de la _party_               | Si (DM)             |
-| `POST`   | `/parties/{party-id}/members`                            | Añadir miembros a la _party_           | Si (DM)             |
-| `DELETE` | `/parties/{party-id}/members/{character-id}`             | Borrar miembro de la _party_           | Si (DM)             |
-| `GET`    | `/parties/{party-id}/messages after=date page=0 count=1` | Obtener ultimos mensajes de la _party_ | **Si** (Miembro/DM) |
-| `POST`   | `/parties/{party-id}/messages`                           | Enviar mensajes / tirar dados          | Si (Miembro/DM)     |
+| Verbo    | URL                                               | Descripción                            | Autenticación       |
+|----------|---------------------------------------------------|----------------------------------------|---------------------|
+| `GET`    | `/parties search=XXX page=0 count=10`             | Buscar _parties_ existentes (paginado) | No                  |
+| `POST`   | `/parties`                                        | Crear una nueva _party_                | Si                  |
+| `GET`    | `/parties/{party-id}`                             | Obtener miembros de la _party_ y DM    | No                  |
+| `DELETE` | `/parties/{party-id}`                             | Borrar _party_                         | Si (DM)             |
+| `PUT`    | `/parties/{party-id}/dm`                          | Cambiar DM de la _party_               | Si (DM)             |
+| `POST`   | `/parties/{party-id}/members`                     | Añadir miembros a la _party_           | Si (DM)             |
+| `DELETE` | `/parties/{party-id}/members/{character-id}`      | Borrar miembro de la _party_           | Si (DM)             |
+| `GET`    | `/parties/{party-id}/messages after=date count=1` | Obtener ultimos mensajes de la _party_ | **Si** (Miembro/DM) |
+| `POST`   | `/parties/{party-id}/messages`                    | Enviar mensajes / tirar dados          | Si (Miembro/DM)     |
 
 <!-- TODO: editar nombre y descripción -->
 

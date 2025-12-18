@@ -2,6 +2,7 @@ import random
 import re
 import requests
 import string
+import json
 from pathlib import Path
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -68,21 +69,40 @@ def _print_summary(r: requests.Response, msg: str | None = None, max_len = 200):
     body = re.sub(r"\s{2,}|\n", "", body, flags=re.MULTILINE)
 
     msg = '' if msg is None else msg + ': '
+    assert r.request is not None
     print(f'{msg}{r.request.method} {r.url} -> {r.status_code} {HTTPStatus(r.status_code).phrase} {body}')
 
 
 def _print_response(response: requests.Response):
-    try:
-        body = response.json()
-    except Exception:
-        body = response.text
+    assert response.request is not None
 
     print('PETITION:', response.request.method, response.url)
-    print(response.request.headers)
-    print(response.request.body)
+    # Cabeceras de la petición
+    try:
+        print(json.dumps(dict(response.request.headers), indent=2))
+    except Exception:
+        print(response.request.headers)
+
+    # Cuerpo de la petición
+    if response.request.body is not None:
+        try:
+            print(json.dumps(dict(response.request.body), indent=2))
+        except Exception:
+            print(response.request.body)
+
     print('RESPONSE:', response.status_code, HTTPStatus(response.status_code).phrase)
-    print(response.headers)
-    print(body)
+    # Cabeceras de la respuesta
+    try:
+        print(json.dumps(dict(response.headers), indent=2))
+    except Exception:
+        print(response.headers)
+
+    # Cuerpo de la respuesta
+    try:
+        print(json.dumps(response.json(), indent=2))
+    except Exception:
+        print(response.text)
+
 
 
 # ==== FUNCIONES DE VALIDACIÓN ================================================

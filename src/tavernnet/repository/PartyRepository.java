@@ -1,9 +1,8 @@
 package tavernnet.repository;
 
-import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import org.springframework.data.mongodb.repository.Aggregation;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.Update;
@@ -26,18 +25,6 @@ public interface PartyRepository extends MongoRepository<Party, ObjectId> {
     @Update("{ '$pull': { 'members': ?1 } }")
     long removeMember(ObjectId partyId, ObjectId member);
 
-    @Aggregation(pipeline = {
-        "{ $match: ?0 }",
-        "{ $sort: { 'creation': -1 } }",
-        // elementos de paginación y número de resultados
-        """
-        {
-            $facet: {
-                'total_count': [{ $count: 'count' }],
-                'page_data': [ {$skip: ?1}, {$limit: ?2} ]
-            }
-        }
-        """
-    })
-    AggregationResults<Document> searchParties(Document match, int page, int count);
+    @Query("{ $or: [{ 'name': /?0/i }, {'description': /?0/i }] }")
+    Page<Party> searchParties(String search, Pageable page);
 }
