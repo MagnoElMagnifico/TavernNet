@@ -14,6 +14,7 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.*;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -44,6 +45,7 @@ public class ErrorController {
     @ExceptionHandler({
         HttpRequestMethodNotSupportedException.class,
     })
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public ErrorResponse handleInvalidPathOrParams(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
         log.warn("Invalid method at {}: {}", request.getRequestURI(), ex.getMessage());
         var problem = ProblemDetail.forStatus(HttpStatus.METHOD_NOT_ALLOWED);
@@ -59,6 +61,7 @@ public class ErrorController {
         HttpMessageNotReadableException.class,   // Error al leer el cuerpo
         HttpMediaTypeNotSupportedException.class // Content-Type no soportado
     })
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleInvalidBody(Exception ex, HttpServletRequest request) {
         log.warn("Invalid request body at {}: {}", request.getRequestURI(), ex.getMessage());
         var problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
@@ -76,6 +79,7 @@ public class ErrorController {
         BindException.class,                     // Errores de binding en formularios o query params
         HandlerMethodValidationException.class   // Validación a nivel de metodo
     })
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
     public ErrorResponse handleValidation(Exception ex, HttpServletRequest request) {
         log.warn("Validation error at {}: {}", request.getRequestURI(), ex.getMessage());
 
@@ -154,6 +158,7 @@ public class ErrorController {
         MethodArgumentTypeMismatchException.class,
         NoResourceFoundException.class
     })
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleMissingDataInRequest(Exception ex, HttpServletRequest request) {
         log.warn("Invalid path or parameters at {}: {}", request.getRequestURI(), ex.getMessage());
 
@@ -225,6 +230,7 @@ public class ErrorController {
         BadCredentialsException.class,
         InvalidCredentialsException.class
     })
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorResponse handleInvalidAuthToken(Exception ex, HttpServletRequest request) {
         log.warn("Invalid credentials {}: {}", request.getRequestURI(), ex.getMessage());
         var problem = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
@@ -240,6 +246,7 @@ public class ErrorController {
 
     // Recursos no encontrados
     @ExceptionHandler(ResourceNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handlePostNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
         log.warn("Resource not found {}: {}", request.getRequestURI(), ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
@@ -251,6 +258,7 @@ public class ErrorController {
 
     // Recurso duplicado
     @ExceptionHandler(DuplicatedResourceException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleDuplicatedResource(DuplicatedResourceException ex, HttpServletRequest request) {
         log.warn("Duplicated resource {}: {}", request.getRequestURI(), ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
@@ -262,6 +270,7 @@ public class ErrorController {
 
     // Limites sobrepasados
     @ExceptionHandler(LimitException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
     public ErrorResponse handleLimit(LimitException ex, HttpServletRequest request) {
         log.warn("Limit exceeded {}: {}", request.getRequestURI(), ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
@@ -273,6 +282,7 @@ public class ErrorController {
 
     // JSON PATCH invalido
     @ExceptionHandler(JsonPatchFailedException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
     public ErrorResponse handleLimit(JsonPatchFailedException ex, HttpServletRequest request) {
         log.warn("Invalid JSON PATCH {}: {}", request.getRequestURI(), ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_CONTENT);
@@ -284,6 +294,7 @@ public class ErrorController {
 
     // La operación require un personaje activo
     @ExceptionHandler(NoCharacterSelectedException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleNotActiveCharacter(NoCharacterSelectedException ex, HttpServletRequest request) {
         log.warn("No character was selected {}: {}", request.getRequestURI(), ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);

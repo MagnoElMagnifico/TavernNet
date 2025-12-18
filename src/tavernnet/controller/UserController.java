@@ -18,6 +18,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.OpenAPI31;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 
 import tavernnet.exception.DuplicatedResourceException;
 import tavernnet.exception.ResourceNotFoundException;
@@ -30,6 +35,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 @RestController
 @RequestMapping("users")
 @ExposesResourceFor(User.class)
+@Tag(name = "users-controller", description = "Users related operations")
 @NullMarked
 public class UserController {
     private final UserService userService;
@@ -46,14 +52,21 @@ public class UserController {
     @GetMapping(produces = MediaTypes.HAL_JSON_VALUE)
     @JsonView(User.class)
     @PreAuthorize("true")
+    @Operation(description = "Get all users matching search term")
     public ResponseEntity<PagedModel<User.PublicProfile>> getUsers(
+        @Parameter(description =
+            "Search term used for searching as a substring",
+            example = "marcos")
         @RequestParam(value = "search", required = false, defaultValue = "")
         String searchTerm,
-
         @Min(value = 0, message = "Minimum page is 0")
+        @Parameter(description =
+            "The number of the page that the service will retrieve from the database",
+            example = "1")
         @RequestParam(value = "page", required = false, defaultValue = "0")
         int pageNumber,
 
+        @Parameter(description = "The size of the pages", example = "3")
         @RequestParam(value = "count", required = false, defaultValue = "10")
         @Min(value = 1, message = "Minimum page size is 1")
         @Max(value = 1000, message = "Maximum page size is 1000")
@@ -99,7 +112,8 @@ public class UserController {
 
         response.add(linkTo(
             methodOn(UserController.class)
-                .getUsers(searchTerm, users.getTotalPages() - 1, pageSize)
+                .getUsers(searchTerm,
+                    Math.min(users.getTotalPages() - 1, 0), pageSize)
         ).withRel(IanaLinkRelations.LAST));
 
         return ResponseEntity.ok(response);

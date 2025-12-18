@@ -61,6 +61,11 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-gson:0.13.0'
 
+    // OAS
+    //implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0-RC1'
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0")
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-scalar:3.0.0-RC1'
+
     // Hateoas
     implementation 'org.springframework.boot:spring-boot-starter-hateoas'
 }

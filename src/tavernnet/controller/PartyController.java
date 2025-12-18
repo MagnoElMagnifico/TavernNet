@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.hateoas.PagedModel;
+import org.springframework.hateoas.server.ExposesResourceFor;
 import org.springframework.http.MediaType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Slice;
@@ -23,10 +24,14 @@ import tavernnet.exception.NoCharacterSelectedException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Message;
 import tavernnet.model.Party;
+import tavernnet.model.User;
 import tavernnet.service.PartyService;
 import tavernnet.utils.Utils;
 import tavernnet.utils.ValidObjectId;
-
+import io.swagger.v3.oas.annotations.OpenAPI31;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Set;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
@@ -34,6 +39,8 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("parties")
+@ExposesResourceFor(Party.class)
+@Tag(name = "parties-controller", description = "Parties related operations")
 @NullMarked
 public class PartyController {
 
@@ -48,13 +55,20 @@ public class PartyController {
     @JsonView(Party.class)
     @PreAuthorize("true")
     public ResponseEntity<PagedModel<Party.Summary>> searchParties(
+        @Parameter(description =
+            "Search term used for searching as a substring",
+            example = "dndnt")
         @RequestParam(value = "search", required = false, defaultValue = "")
         String searchTerm,
 
+        @Parameter(description =
+            "The number of the page that the service will retrieve from the database",
+            example = "1")
         @RequestParam(value = "page", required = false, defaultValue = "0")
         @Min(value = 0, message = "Minimum page is 0")
         int pageNumber,
 
+        @Parameter(description = "The size of the pages", example = "3")
         @RequestParam(value = "count", required = false, defaultValue = "10")
         @Min(value = 1, message = "Minimum parties per page is 1")
         @Max(value = 100, message = "Maximum parties per page is 100")
@@ -88,7 +102,7 @@ public class PartyController {
             0, pageSize)).withRel(IanaLinkRelations.FIRST));
 
         response.add(linkTo(methodOn(PartyController.class).searchParties(searchTerm,
-            found_parties.getTotalPages() - 1, pageSize)).withRel(IanaLinkRelations.LAST));
+            Math.min(found_parties.getTotalPages() - 1, 0), pageSize)).withRel(IanaLinkRelations.LAST));
 
         return ResponseEntity.ok(response);
     }
@@ -192,9 +206,12 @@ public class PartyController {
         @ValidObjectId
         ObjectId partyId,
 
+        @Parameter(description = "The cursor from which next messages appear, expressed as a date",
+            example = "2025-12-17T02:42:00Z")
         @RequestParam(value = "after", required = false, defaultValue = "")
         String after,
 
+        @Parameter(description = "The size of the pages", example = "3")
         @RequestParam(value = "count", required = false, defaultValue = "10")
         @Min(value = 1, message = "Minimum parties per page is 1")
         @Max(value = 100, message = "Maximum parties per page is 100")

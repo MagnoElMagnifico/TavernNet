@@ -27,6 +27,10 @@ import tavernnet.model.PostView;
 import tavernnet.service.PostService;
 import tavernnet.utils.Utils;
 import tavernnet.utils.ValidObjectId;
+import io.swagger.v3.oas.annotations.OpenAPI31;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
@@ -34,6 +38,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @RestController
 @RequestMapping("posts")
 @ExposesResourceFor(Post.class)
+@Tag(name = "posts-controller", description = "Post and Comment related operations")
 @NullMarked
 public class PostController {
     private final EntityLinks entityLinks;
@@ -54,16 +59,24 @@ public class PostController {
     @JsonView(PostView.class)
     @PreAuthorize("true")
     public ResponseEntity<PagedModel<PostView>> getPosts(
+        @Parameter(description =
+            "Search term used for searching as a substring",
+            example = "Post de prueba")
         @RequestParam(value = "search", required = false, defaultValue = "")
         String searchTerm,
 
         @RequestParam(value = "author", required = false, defaultValue = "")
         String author,
 
+
+        @Parameter(description =
+            "The number of the page that the service will retrieve from the database",
+            example = "1")
         @RequestParam(value = "page", required = false, defaultValue = "0")
         @Min(value = 0, message = "Minimum page is 0")
         int pageNumber,
 
+        @Parameter(description = "The size of the pages", example = "3")
         @RequestParam(value = "count", required = false, defaultValue = "10")
         @Min(value = 1, message = "Minimum posts per page is 1")
         @Max(value = 100, message = "Maximum posts per page is 100")
@@ -109,7 +122,8 @@ public class PostController {
 
         response.add(linkTo(
             methodOn(PostController.class)
-                .getPosts(searchTerm, author, foundPosts.getTotalPages() - 1, pageSize)
+                .getPosts(searchTerm, author,
+                    Math.min(foundPosts.getTotalPages() - 1, 0), pageSize)
         ).withRel(IanaLinkRelations.LAST));
 
         return ResponseEntity.ok(response);
@@ -240,10 +254,15 @@ public class PostController {
         @ValidObjectId(message = "Invalid postId to retrieve comments from")
         ObjectId postId,
 
+
+        @Parameter(description =
+            "The number of the page that the service will retrieve from the database",
+            example = "1")
         @RequestParam(value = "page", required = false, defaultValue = "0")
         @Min(value = 0, message = "Minimum page is 0")
         int pageNumber,
 
+        @Parameter(description = "The size of the pages", example = "3")
         @RequestParam(value = "count", required = false, defaultValue = "10")
         @Min(value = 1, message = "Minimum posts per page is 1")
         @Max(value = 100, message = "Maximum posts per page is 100")
