@@ -40,21 +40,21 @@ public class PostService {
     private static final Logger log = LoggerFactory.getLogger(PostService.class);
     private static final int LATEST_COMMENTS = 10;
 
-    private final PostsRepository postsRepo;
-    private final PostsViewRepository postsViewRepo;
-    private final LikesRepository likesRepo;
-    private final CommentsRepository commentRepo;
+    private final PostRepository postsRepo;
+    private final PostViewRepository postsViewRepo;
+    private final LikeRepository likesRepo;
+    private final CommentRepository commentRepo;
     private final CharacterRepository charRepo;
     private final PagedResourcesAssembler<PostView> asmPost;
-    private final PagedResourcesAssembler<Comment> asmComment;
 
     @Autowired
     public PostService(
-        PostsRepository postsRepo,
-        PostsViewRepository postsViewRepo,
-        CommentsRepository commentRepo,
-        LikesRepository likesRepo,
-        CharacterRepository charRepo, PagedResourcesAssembler<PostView> asmPost, PagedResourcesAssembler<Comment> asmComment
+        PostRepository postsRepo,
+        PostViewRepository postsViewRepo,
+        CommentRepository commentRepo,
+        LikeRepository likesRepo,
+        CharacterRepository charRepo,
+        PagedResourcesAssembler<PostView> asmPost
     ) {
         this.postsRepo = postsRepo;
         this.postsViewRepo = postsViewRepo;
@@ -62,7 +62,6 @@ public class PostService {
         this.likesRepo = likesRepo;
         this.charRepo = charRepo;
         this.asmPost = asmPost;
-        this.asmComment = asmComment;
     }
 
     // ==== POSTS ==============================================================
@@ -263,7 +262,7 @@ public class PostService {
         }
 
         if (!likesRepo.existsLike(postId, user.activeCharacter())) {
-            // TODO: no es la excepcion mas apropiada para esto, pero por ahora sirve (debe devolver 409 Conflict)
+            // TODO: no es la excepción mas apropiada para esto, pero por ahora sirve (debe devolver 409 Conflict)
             throw new DuplicatedResourceException(null, "Like", postId.toHexString());
         }
 

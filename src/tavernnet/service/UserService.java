@@ -52,8 +52,7 @@ public class UserService implements UserDetailsService {
         this.refreshRepo = refreshRepo;
     }
 
-    public Page<User.PublicProfile> getUsers(String searchTerm, int pageNumber,
-                                             int pageSize) {
+    public Page<User.PublicProfile> getUsers(String searchTerm, int pageNumber, int pageSize) {
         log.debug("GET /users search={} page={} count={}", searchTerm, pageNumber, pageSize);
         var root = userRepo.searchByUsernameWithCount(
             Pattern.quote(searchTerm),
@@ -130,43 +129,6 @@ public class UserService implements UserDetailsService {
             .findByUsername(username)
             .orElseThrow(() -> new UsernameNotFoundException(username));
     }
-
-    /*private PagedModel<EntityModel<User.PublicProfile>> toPagedModel(AggregationResults<Document> root, int pageNumber, int pageSize) {
-        var realRoot = root.getMappedResults().getFirst();
-        long totalCount = 0;
-        if (
-            realRoot.get("total_count") instanceof List<?> list
-                && !list.isEmpty()
-                && list.getFirst() instanceof Map<?, ?> map
-                && map.get("count") instanceof Number n
-        ) {
-            totalCount = n.longValue();
-        }
-
-        // Esto está bien, como mucho procesamos el límite maximo de elementos
-        // permitidos por página, que es 1000.
-        List<User.PublicProfile> pageContent = new ArrayList<>();
-        if (realRoot.get("page_data") instanceof List<?> pageData) {
-            for (Object obj : pageData) {
-                if (!(obj instanceof Document doc)) {
-                    continue;
-                }
-
-                pageContent.add(
-                    new User.PublicProfile(
-                        doc.getString("_id"),
-                        doc.getDate("creation")
-                            .toInstant()
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDateTime(),
-                        null
-                    )
-                );
-            }
-        }
-
-        return assembler.toModel(new PageImpl<>(pageContent, PageRequest.of(pageNumber, pageSize), totalCount));
-    }*/
 
     private Page<User.PublicProfile> toPage(
         AggregationResults<Document> root,

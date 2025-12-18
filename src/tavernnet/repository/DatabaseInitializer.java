@@ -25,9 +25,9 @@ public class DatabaseInitializer implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DatabaseInitializer.class);
     private final MongoTemplate mongo;
     private final PasswordEncoder passwordEncoder;
-    private final LikesRepository likesRepo;
+    private final LikeRepository likesRepo;
 
-    public DatabaseInitializer(MongoTemplate mongo, PasswordEncoder passwordEncoder, LikesRepository likesRepo) {
+    public DatabaseInitializer(MongoTemplate mongo, PasswordEncoder passwordEncoder, LikeRepository likesRepo) {
         this.mongo = mongo;
         this.passwordEncoder = passwordEncoder;
         this.likesRepo = likesRepo;
@@ -168,6 +168,12 @@ public class DatabaseInitializer implements CommandLineRunner {
             .unique()
         );
         log.info("Created likes index");
+
+        mongo.indexOps("messages").createIndex(new Index()
+            .on("party", Sort.Direction.DESC)
+            .on("creation", Sort.Direction.DESC)
+        );
+        log.info("Created messages index");
     }
 
     private void createViews() {

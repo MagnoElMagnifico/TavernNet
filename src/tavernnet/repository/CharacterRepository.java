@@ -11,7 +11,6 @@ import java.util.Collection;
 import tavernnet.model.Character;
 
 @Repository
-@NullMarked
 public interface CharacterRepository extends MongoRepository<Character, ObjectId> {
     @Query("{ 'user': ?0 }")
     Collection<Character> getCharactersByUser(String username);
@@ -22,10 +21,6 @@ public interface CharacterRepository extends MongoRepository<Character, ObjectId
     @Query("{ 'user': ?0, 'name': ?1 }")
     Character getCharacterByName(String username, String characterName);
 
-    /**
-     * @param characterid Id del personaje del que obtener los datos.
-     * @return Character que tiene el ID dado.
-     */
     @Query("{ '_id': ?0 }")
     Character getCharacterById(ObjectId characterid);
 
@@ -35,9 +30,5 @@ public interface CharacterRepository extends MongoRepository<Character, ObjectId
     @Query(value = "{ 'user': ?0 }", count = true)
     int countUserCharacters(String username);
 
-    /**
-     * @param character Guarda el personaje en la base de datos.
-     * @return Devuelve el objeto que se almacenó en la base de datos.
-     */
     <S extends Character> S save(S character);
 }

@@ -14,11 +14,11 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 @NullMarked
-public class LikesRepository {
+public class LikeRepository {
     private final MongoTemplate mongo;
 
     @Autowired
-    public LikesRepository(MongoTemplate mongo) {
+    public LikeRepository(MongoTemplate mongo) {
         this.mongo = mongo;
     }
 

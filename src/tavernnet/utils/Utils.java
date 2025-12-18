@@ -12,20 +12,8 @@ import java.net.URI;
 
 @NullMarked
 public class Utils {
-    public static URI getUrl(String methodName, Class<?> clazz, Object args) {
+    public static URI getUrl(String methodName, Class<?> clazz, Object... args) {
         return MvcUriComponentsBuilder.fromMethodName(clazz, methodName, args)
-            .build()
-            .toUri();
-    }
-
-    public static URI getUrl(String methodName, Class<?> clazz, Object arg1, Object arg2) {
-        return MvcUriComponentsBuilder.fromMethodName(clazz, methodName, arg1, arg2)
-            .build()
-            .toUri();
-    }
-
-    public static URI getUrl(String methodName, Class<?> clazz, Object arg1, Object arg2, Object arg3) {
-        return MvcUriComponentsBuilder.fromMethodName(clazz, methodName, arg1, arg2, arg3)
             .build()
             .toUri();
     }

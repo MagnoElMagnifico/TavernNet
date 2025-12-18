@@ -11,7 +11,7 @@ import java.util.Optional;
 
 @Repository
 @NullMarked
-public interface PostsRepository extends MongoRepository<Post, ObjectId> {
+public interface PostRepository extends MongoRepository<Post, ObjectId> {
     // No usar deleteById ya que ignora si no existe
     @Query(value = "{ '_id': ?0 }", delete = true)
     Optional<Post> deletePostById(ObjectId id);

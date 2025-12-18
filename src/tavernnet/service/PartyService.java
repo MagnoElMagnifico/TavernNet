@@ -8,13 +8,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.PagedModel;
+import org.springframework.data.domain.Slice;
 import tavernnet.exception.InvalidCredentialsException;
 import tavernnet.exception.LimitException;
 import tavernnet.model.*;
 import tavernnet.model.Character;
+import tavernnet.exception.NoCharacterSelectedException;
+import tavernnet.model.Message;
 import tavernnet.repository.CharacterRepository;
+import tavernnet.repository.MessageRepository;
 import tavernnet.repository.UserRepository;
 import tavernnet.utils.Utils;
 import org.slf4j.Logger;
@@ -24,7 +26,6 @@ import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.repository.PartyRepository;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -37,16 +38,19 @@ public class PartyService {
     private final PartyRepository partyRepo;
     private final CharacterRepository charRepo;
     private final UserRepository userRepo;
+    private final MessageRepository msgRepo;
 
     @Autowired
     public PartyService(
         PartyRepository partyRepo,
         CharacterRepository charRepo,
-        UserRepository userRepo
+        UserRepository userRepo,
+        MessageRepository msgRepo
     ) {
         this.partyRepo = partyRepo;
         this.charRepo = charRepo;
         this.userRepo = userRepo;
+        this.msgRepo = msgRepo;
     }
 
     public Page<Party.Summary> searchParties(
@@ -162,18 +166,52 @@ public class PartyService {
 
     // ==== MENSAJES ===========================================================
 
-    public PagedModel<EntityModel<Message>> getMessages(
+    public Slice<Message> getMessages(
         ObjectId partyId,
-        LocalDateTime after,
-        int page,
+        String after,
         int count
-    ) {
-        // TODO: implementar
-        return null;
+    ) throws ResourceNotFoundException {
+        if (!partyRepo.existsById(partyId)) {
+            throw new ResourceNotFoundException("Party", partyId.toHexString());
+        }
+
+        // Obtener la slice de la BD
+        Slice<Message> slice;
+        var page = PageRequest.ofSize(count);
+        if (after == null || after.isBlank()) {
+            slice = msgRepo.getFirstSlice(partyId, page);
+        } else {
+            slice = msgRepo.getNextSlice(partyId, LocalDateTime.parse(after), page);
+        }
+
+        // Añadir detalles sobre el autor útiles para el cliente
+        for (Message msg : slice) {
+            Character character = charRepo
+                .findById(msg.getAuthor())
+                .orElseThrow(() -> new RuntimeException("Tried to set author details of invalid character for party member"));
+            msg.setAuthorDetails(new Character.Summary(
+                character.getUser(),
+                character.getId().toHexString(),
+                character.getName(),
+                character.getLevel()
+            ));
+        }
+
+        return slice;
     }
 
-    public void sendMessage(ObjectId partyId, Message.CreationRequest msg) {
-        // TODO: implementar
+    public void sendMessage(ObjectId partyId, Message.CreationRequest msg) throws ResourceNotFoundException, InvalidCredentialsException, NoCharacterSelectedException {
+        if (!partyRepo.existsById(partyId)) {
+            throw new ResourceNotFoundException("Party", partyId.toHexString());
+        }
+
+        User.AuthUser user = Utils.safeGetAuthUser();
+        if (user.activeCharacter() == null) {
+            throw new NoCharacterSelectedException();
+        }
+
+        Message newMsg = Message.fromRequest(msg, user.activeCharacter(), partyId);
+        msgRepo.save(newMsg);
     }
 
     private Page<Party.Summary> toPage(AggregationResults<Document> root, int pageNumber, int pageSize) {

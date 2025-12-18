@@ -8,26 +8,25 @@ import jakarta.validation.constraints.Size;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.MediaType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tavernnet.exception.InvalidCredentialsException;
 import tavernnet.exception.LimitException;
+import tavernnet.exception.NoCharacterSelectedException;
 import tavernnet.exception.ResourceNotFoundException;
 import tavernnet.model.Message;
 import tavernnet.model.Party;
-import tavernnet.model.PostView;
-import tavernnet.model.User;
 import tavernnet.service.PartyService;
 import tavernnet.utils.Utils;
 import tavernnet.utils.ValidObjectId;
 
-import java.time.LocalDateTime;
 import java.util.Set;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
@@ -161,8 +160,13 @@ public class PartyController {
         Set<@ValidObjectId ObjectId> newMembers
     ) throws ResourceNotFoundException, LimitException {
         partyService.addMembers(partyId, newMembers);
-        // TODO: que hacemos con la URL?
-        return ResponseEntity.created(null).build();
+        return ResponseEntity
+            .created(Utils.getUrl(
+                "getParty",
+                PartyController.class,
+                partyId
+            ))
+            .build();
     }
 
     @DeleteMapping("{party}/members/{memberid}")
@@ -183,25 +187,22 @@ public class PartyController {
 
     @GetMapping("{party}/messages")
     @PreAuthorize("hasRole('ADMIN') or @auth.isUserOwner('parties', #partyId, #principal) or @auth.isMember(#partyId, #principal)")
-    public PagedModel<EntityModel<Message>> getMessages(
+    public Slice<Message> getMessages(
         @PathVariable("party")
         @ValidObjectId
         ObjectId partyId,
 
-        @RequestParam(value = "after", required = false, defaultValue = "10") // TODO: now
-        @Valid
+        @RequestParam(value = "after", required = false, defaultValue = "")
         String after,
-
-        @RequestParam(value = "page", required = false, defaultValue = "0")
-        @Min(value = 0, message = "Minimum page is 0")
-        int page,
 
         @RequestParam(value = "count", required = false, defaultValue = "10")
         @Min(value = 1, message = "Minimum parties per page is 1")
         @Max(value = 100, message = "Maximum parties per page is 100")
         int count
     ) throws ResourceNotFoundException {
-        return partyService.getMessages(partyId, LocalDateTime.parse(after), page, count);
+        // TODO: hateoas
+        // NOTE: se usa slice porque es un tipo de paginación distinto. Hateoas debería funcionar igual
+        return partyService.getMessages(partyId, after, count);
     }
 
     @PostMapping("{party}/messages")
@@ -212,9 +213,14 @@ public class PartyController {
         ObjectId partyId,
         @RequestBody
         Message.@Valid CreationRequest message
-    ) {
+    ) throws InvalidCredentialsException, ResourceNotFoundException, NoCharacterSelectedException {
         partyService.sendMessage(partyId, message);
-        // TODO: que URL le ponemos?
-        return ResponseEntity.created(null).build();
+        return ResponseEntity
+            .created(Utils.getUrl(
+                "getMessages",
+                PartyController.class,
+                partyId, "", 0, 1
+            ))
+            .build();
     }
 }
